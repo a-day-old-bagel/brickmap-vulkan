@@ -20,14 +20,14 @@ These dependencies will be downloaded during the first run of cmake:
 
 * [glfw](https://github.com/glfw/glfw.git)
 * [glm](https://github.com/g-truc/glm.git)
-* [spdlog](https://github.com/gabime/spdlog.git)
-* [json](https://github.com/nlohmann/json.git)
-* [tracy](https://github.com/wolfpld/tracy.git)
 * [imgui](https://github.com/ocornut/imgui.git)
+* [json](https://github.com/nlohmann/json.git)
+* [spdlog](https://github.com/gabime/spdlog.git)
+* [tracy](https://github.com/wolfpld/tracy.git)
+* [simplex-noise](https://github.com/SRombauts/SimplexNoise.git)
 * [spirv-reflect](https://github.com/KhronosGroup/SPIRV-Reflect.git)
 * [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap.git)
 * [vma](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git)
-* [simplex-noise](https://github.com/SRombauts/SimplexNoise.git)
 
 ## Attributions
 

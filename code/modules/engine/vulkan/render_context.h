@@ -43,8 +43,8 @@ namespace rebel_road
             uint32_t get_swapchain_image_index();
             vk::Image get_swapchain_image();
 
-            descriptor_layout_cache* get_descriptor_layout_cache() const { return descriptor_layout_cache; }
-            descriptor_allocator* get_descriptor_allocator() const { return descriptor_allocator; }
+            descriptor_layout_cache* get_descriptor_layout_cache() const { return descriptor_lc; }
+            descriptor_allocator* get_descriptor_allocator() const { return descriptor_alloc; }
 
             device_context* get_device_context() const { return device_ctx; }
 
@@ -59,8 +59,8 @@ namespace rebel_road
 
             frame frames[FRAME_OVERLAP];
 
-            descriptor_allocator* descriptor_allocator { nullptr };
-            descriptor_layout_cache* descriptor_layout_cache { nullptr };
+            descriptor_allocator* descriptor_alloc { nullptr };
+            descriptor_layout_cache* descriptor_lc { nullptr };
 
             uint32_t frame_number { 0 };
 

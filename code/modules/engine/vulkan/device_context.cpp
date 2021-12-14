@@ -2,7 +2,7 @@
 #include "render_context.h"
 #include "shader.h"
 #include "image.h"
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include <vk_mem_alloc.h>
 
@@ -418,14 +418,14 @@ namespace rebel_road
         vk::Pipeline device_context::create_compute_pipeline( const vk::ComputePipelineCreateInfo& create_info )
         {
             auto pipeline = device.createComputePipeline( nullptr, create_info );
-            deletion_queue.push_function( [=] () { device.destroyPipeline( pipeline ); } );
+            deletion_queue.push_function( [=,this] () { device.destroyPipeline( pipeline ); } );
             return pipeline;
         }
 
         vk::ImageView device_context::create_image_view( const vk::ImageViewCreateInfo& create_info )
         {
             auto image_view = device.createImageView( create_info );
-            deletion_queue.push_function( [=] () { device.destroyImageView( image_view ); } );
+            deletion_queue.push_function( [=,this] () { device.destroyImageView( image_view ); } );
             return image_view;
         }
 
@@ -434,14 +434,14 @@ namespace rebel_road
             vk::Image vk_image;
             VmaAllocation vk_allocation;
             vmaCreateImage( allocator, &create_info, &alloc_info, &vk_image, &vk_allocation, nullptr );
-            deletion_queue.push_function( [=] () { vmaDestroyImage( allocator, vk_image, vk_allocation ); } );
+            deletion_queue.push_function( [=,this] () { vmaDestroyImage( allocator, vk_image, vk_allocation ); } );
             return std::make_pair( vk_image, vk_allocation );
         }
 
         vk::Sampler device_context::create_sampler( const vk::SamplerCreateInfo& create_info )
         {
             auto sampler = device.createSampler( create_info );
-            deletion_queue.push_function( [=] () { device.destroySampler( sampler ); } );
+            deletion_queue.push_function( [=,this] () { device.destroySampler( sampler ); } );
             return sampler;
         }
 
@@ -459,11 +459,11 @@ namespace rebel_road
 
         void device_context::render_stats()
         {
-            ImGui::Text( "Cached Render Passes: %i", render_pass_cache.size() );
-            ImGui::Text( "Cached Framebuffers: %i", framebuffer_cache.size() );
-            ImGui::Text( "Cached Shader Modules: %i", shader_module_cache.size() );
-            ImGui::Text( "Cached Pipeline Layouts: %i", pipeline_layout_cache.size() );
-            ImGui::Text( "Cached Pipelines: %i", pipeline_cache.size() );
+            ImGui::Text( "Cached Render Passes: %i", static_cast<uint32_t>( render_pass_cache.size() ) );
+            ImGui::Text( "Cached Framebuffers: %i", static_cast<uint32_t>( framebuffer_cache.size() ) );
+            ImGui::Text( "Cached Shader Modules: %i", static_cast<uint32_t>( shader_module_cache.size() ) );
+            ImGui::Text( "Cached Pipeline Layouts: %i", static_cast<uint32_t>( pipeline_layout_cache.size() ) );
+            ImGui::Text( "Cached Pipelines: %i", static_cast<uint32_t>( pipeline_cache.size() ) );
         }
 
 

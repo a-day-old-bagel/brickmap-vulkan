@@ -1,7 +1,7 @@
 #include "camera.h"
 
 #define GLFW_INCLUDE_VULKAN
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include <imgui.h>
 
@@ -64,7 +64,7 @@ namespace rebel_road
 
 			horizontal_angle += diffx * 0.012;
 			vertical_angle -= diffy * 0.012;
-			vertical_angle = std::max( -std::numbers::pi / 2.0 + 0.001, std::min( vertical_angle, std::numbers::pi / 2.0 - 0.001 ) );
+			vertical_angle = std::max( -M_PI / 2.0 + 0.001, std::min( vertical_angle, M_PI / 2.0 - 0.001 ) );
 
 			glfwSetCursorPos( window, w * 0.5, h * 0.5 );
 		}

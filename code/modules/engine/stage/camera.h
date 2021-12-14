@@ -2,7 +2,8 @@
 
 #include <glm/glm.hpp>
 
-#include <numbers>
+//#include <numbers>
+#include <math.h>
 
 struct GLFWwindow;
 
@@ -22,7 +23,7 @@ namespace rebel_road
 
             double fov = 70;
             double aspect_ratio = 1600/900;//render_width / render_height;
-            double fov_rad = (std::numbers::pi / 180.0) * static_cast<double>(fov); // Need radians
+            double fov_rad = (M_PI / 180.0) * static_cast<double>(fov); // Need radians
             double tan_height = 2.0 * tan(fov_rad * 0.5);
 
             double horizontal_angle = 0.0;

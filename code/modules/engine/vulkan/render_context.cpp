@@ -79,13 +79,13 @@ namespace rebel_road
 
         void render_context::init_descriptor_allocator()
         {
-            descriptor_allocator = new vulkan::descriptor_allocator {};
-            descriptor_allocator->init( device_ctx->device );
-            deletion_queue.push_function( [=] () { descriptor_allocator->destroy_pools(); } );
+            descriptor_alloc = new vulkan::descriptor_allocator {};
+            descriptor_alloc->init( device_ctx->device );
+            deletion_queue.push_function( [=] () { descriptor_alloc->destroy_pools(); } );
 
-            descriptor_layout_cache = new vulkan::descriptor_layout_cache {};
-            descriptor_layout_cache->init( device_ctx->device );
-            deletion_queue.push_function( [=] () { descriptor_layout_cache->shutdown(); } );
+            descriptor_lc = new vulkan::descriptor_layout_cache {};
+            descriptor_lc->init( device_ctx->device );
+            deletion_queue.push_function( [=] () { descriptor_lc->shutdown(); } );
 
             for ( int i = 0; i < FRAME_OVERLAP; i++ )
             {

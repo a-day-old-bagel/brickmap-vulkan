@@ -139,7 +139,7 @@ namespace rebel_road
 
             uint32_t frame {};
 
-            std::shared_ptr<world> world;
+            std::shared_ptr<world> voxel_world;
         };
 
     }

@@ -18,4 +18,13 @@
     \
         return EXIT_SUCCESS; \
     }
+#else
+    #define application( app_type ) \
+    \
+    \
+    void main() \
+    { \
+        rebel_road::apps::app_type app; \ 
+        app.main_loop(); \
+    }
 #endif

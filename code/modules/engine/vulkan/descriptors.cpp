@@ -178,9 +178,9 @@ namespace rebel_road
 			{
 				std::sort( layout_key.bindings.begin(), layout_key.bindings.end(), [] ( descriptor_layout_key::combined_binding& a, descriptor_layout_key::combined_binding& b )
 					{
-						if ( a.binding < b.binding )
-							return true;
-						else if ( a.flags < b.flags )
+						//if ( a.binding < b.binding )
+						//	return true;
+						if ( a.flags < b.flags )
 							return true;
 						return false;
 					} );
@@ -239,7 +239,7 @@ namespace rebel_road
 
 		void descriptor_layout_cache::render_stats()
 		{
-			ImGui::Text( "Descriptor Layouts: %i", layout_cache.size() );
+			ImGui::Text( "Descriptor Layouts: %i", static_cast<uint32_t>( layout_cache.size() ) );
 		}
 
 		descriptor_builder descriptor_builder::begin( descriptor_layout_cache* layout_cache, descriptor_allocator* allocator )

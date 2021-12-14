@@ -4,7 +4,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #define GLFW_INCLUDE_VULKAN
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #include <nlohmann/json.hpp>
 
@@ -69,7 +69,7 @@ namespace rebel_road
             else
                 spdlog::critical( "Platform does not support raw mouse input." );
 
-            deletion_queue.push_function( [=] ()
+            deletion_queue.push_function( [=,this] ()
                 {
                     glfwDestroyWindow( window );
                     glfwTerminate();
@@ -80,7 +80,7 @@ namespace rebel_road
         {
             auto dci = get_device_create_info();
             device_ctx = vulkan::device_context::create( dci );
-            deletion_queue.push_function( [=] () { device_ctx->shutdown(); } );
+            deletion_queue.push_function( [=,this] () { device_ctx->shutdown(); } );
         }
 
         void vulkan_app::toggle_mouse_visible()

@@ -16,7 +16,7 @@ namespace rebel_road
         }
 
         ray_tracer::ray_tracer( vulkan::render_context* in_render_ctx, vk::Extent2D in_render_extent, std::shared_ptr<voxel::world> in_world )
-            : render_ctx( in_render_ctx ), device_ctx( in_render_ctx->get_device_context() ), render_extent( in_render_extent ), world( in_world )
+            : render_ctx( in_render_ctx ), device_ctx( in_render_ctx->get_device_context() ), render_extent( in_render_extent ), voxel_world( in_world )
         {
             worker = vulkan::worker::create( device_ctx );
 
@@ -36,7 +36,7 @@ namespace rebel_road
             global_state.free();
             blit_buf.free();
             worker.reset();
-            world.reset();
+            voxel_world.reset();
         }
 
         void ray_tracer::init()
@@ -146,8 +146,8 @@ namespace rebel_road
 
             // descriptor set
             vulkan::descriptor_builder::begin( render_ctx->get_descriptor_layout_cache(), render_ctx->get_descriptor_allocator() )
-                .bind_buffer( 0, world->get_supergrid_info(), vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute )
-                .bind_buffer( 1, world->get_load_queue_info(), vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute )
+                .bind_buffer( 0, voxel_world->get_supergrid_info(), vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute )
+                .bind_buffer( 1, voxel_world->get_load_queue_info(), vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute )
                 .build( extend_set );
         }
 
