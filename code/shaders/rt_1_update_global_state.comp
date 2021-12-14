@@ -1,0 +1,53 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+layout (std430, set = 0, binding = 0) buffer globals_buffer
+{
+    uint start_position;
+    uint primary_ray_count;
+    uint shadow_ray_count;
+    uint ray_number_primary;
+    uint ray_number_extend;
+    uint ray_number_shade;
+    uint ray_number_connect;
+    uint ray_queue_buffer_size;
+};
+
+layout (push_constant) uniform push_constants
+{
+    // Ray Gen Properties
+    uint frame;
+    uint render_width;
+    uint render_height;
+    uint pad_0;
+
+    // Camera Properties
+    vec4 camera_direction;
+    vec4 camera_up;
+    vec4 camera_right;
+    vec4 camera_position;
+    float focal_distance;
+    float lens_radius;
+    vec2 sun_position;
+};
+
+void main()
+{
+    // Get how many rays we created last generation step.
+    uint progress_last_frame = ray_queue_buffer_size - primary_ray_count;
+
+    // The starting position for the next step is where we left off last time.
+    // Last step we progressed from the start_position by progress_last_frame rays.
+    // Next step we start from prev starting position incremented by how much we progressed this frame
+    start_position += progress_last_frame;
+    start_position = start_position % ( render_width * render_height );
+    start_position = 0;
+
+    // Zero out counters atomically incremented for all wavefront kernels.
+    primary_ray_count = 0;
+    shadow_ray_count = 0;
+    ray_number_primary = 0;
+    ray_number_extend = 0;
+    ray_number_shade = 0;
+    ray_number_connect = 0;    
+}

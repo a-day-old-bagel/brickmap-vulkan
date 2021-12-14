@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+
+# Debug
+*.pdb
+
+# Binary Shaders
+*.spv
+
+.vscode/
+build/
+out/
+

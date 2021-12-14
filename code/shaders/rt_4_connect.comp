@@ -1,0 +1,434 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_shader_atomic_float : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_ARB_gpu_shader_int64 : require
+#extension GL_EXT_debug_printf : enable
+layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
+
+#include "common_variables.glsl"
+#include "common_random.glsl"
+#include "common_brickmap.glsl"
+#include "common_raytrace.glsl"
+#include "common_sunsky.glsl"
+
+layout (std430, set = 0, binding = 0) buffer globals_buffer
+{
+    uint start_position;
+    uint primary_ray_count;
+    uint shadow_ray_count;
+    uint ray_number_primary;
+    uint ray_number_extend;
+    uint ray_number_shade;
+    uint ray_number_connect;
+    uint ray_queue_buffer_size;
+};
+
+layout (std430, set = 0, binding = 1) buffer shadow_buffer
+{
+	shadow_ray shadow_rays[]; 
+};
+
+layout( buffer_reference, std430 ) buffer chunk_bricks
+{
+    brick bricks[];
+};
+
+layout( buffer_reference, std430 ) buffer chunk_indices
+{
+    uint indices[];
+};
+
+layout (std430, set = 1, binding = 0 ) buffer supergrid
+{
+    chunk_indices index_buf_pointers[world_size];
+    chunk_bricks brick_buf_pointers[world_size];
+};
+
+layout (std430, set = 1, binding = 1 ) buffer brick_load_queue
+{
+	uint load_queue_count;
+	uint padlq1;
+	uint padlq2;
+	uint padlq3;
+	ivec4 bricks_to_load[brick_load_queue_size];
+};
+
+layout (set = 2, binding = 0) buffer blit_buffer
+{
+    vec4 colors[];
+};
+
+layout (push_constant) uniform push_constants
+{
+    // Ray Gen Properties
+    uint frame;
+    uint render_width;
+    uint render_height;
+    uint pad_0;
+
+    // Camera Properties
+    vec4 camera_direction;
+    vec4 camera_up;
+    vec4 camera_right;
+    vec4 camera_position;
+    float focal_distance;
+    float lens_radius;
+    vec2 sun_position;
+    float shagga;
+    float pad1;
+    float pad2;
+    float pad3;
+};
+
+bool intersect_byte( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, uint byte )
+{
+	ivec3 pos = ivec3( origin );
+
+	vec3 cb;
+	cb.x = direction.x > epsilon ? pos.x + 1 : pos.x;
+	cb.y = direction.y > epsilon ? pos.y + 1 : pos.y;
+	cb.z = direction.z > epsilon ? pos.z + 1 : pos.z;
+
+	ivec3 outv;
+	outv.x = direction.x > epsilon ? 2 : -1;
+	outv.y = direction.y > epsilon ? 2 : -1;
+	outv.z = direction.z > epsilon ? 2 : -1;
+
+	vec3 step;
+	step.x = direction.x > epsilon ? 1.f : -1.f;
+	step.y = direction.y > epsilon ? 1.f : -1.f;
+	step.z = direction.z > epsilon ? 1.f : -1.f;
+
+	vec3 rdinv = 1.f / direction;
+	vec3 tmax;
+	tmax.x = direction.x != epsilon ? ( cb.x - origin.x ) * rdinv.x : 1000000.f;
+	tmax.y = direction.y != epsilon ? ( cb.y - origin.y ) * rdinv.y : 1000000.f;
+	tmax.z = direction.z != epsilon ? ( cb.z - origin.z ) * rdinv.z : 1000000.f;
+
+	vec3 tdelta = step * rdinv;
+
+	pos = pos % 2;
+
+	distance = 0.f;
+	int step_axis = -1;
+	vec3 mask;
+	// Stepping through grid
+	while ( true )
+    {
+		if ( (byte & ( 1 << ( pos.x + pos.y * 2 + pos.z * 4 ) )) != 0 )
+         {
+			if ( step_axis > -1 )
+            {
+				normal = vec4( 0 );
+				normal[step_axis] = -step[step_axis];
+				distance = tmax[step_axis] - tdelta[step_axis];
+			}
+
+            return true;
+		}
+
+		step_axis = ( tmax.x < tmax.y ) ? ( ( tmax.x < tmax.z ) ? 0 : 2 ) : ( ( tmax.y < tmax.z ) ? 1 : 2 );
+		mask.x = float( tmax.x < tmax.y && tmax.x < tmax.z );
+		mask.y = float( tmax.y <= tmax.x && tmax.y < tmax.z );
+		mask.z = float( tmax.z <= tmax.x && tmax.z <= tmax.y );
+
+		pos += ivec3( mask * step );
+		if ( pos[step_axis] == outv[step_axis] )
+			break;
+		tmax += mask * tdelta;
+	}
+
+	return false;
+}
+
+bool intersect_brick( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, uint brick_index, uint chunk_index )
+{
+	ivec3 pos = ivec3( origin );
+	
+	vec3 rdinv = 1.f / direction;
+
+	vec3 step;
+	step.x = direction.x > 0.f ? 1.f : -1.f;
+	step.y = direction.y > 0.f ? 1.f : -1.f;
+	step.z = direction.z > 0.f ? 1.f : -1.f;
+
+	ivec3 outv;
+	outv.x = direction.x > 0.f ? brick_size : -1;
+	outv.y = direction.y > 0.f ? brick_size : -1;
+	outv.z = direction.z > 0.f ? brick_size : -1;
+
+	vec3 cb;
+	cb.x = direction.x > 0.f ? pos.x + 1 : pos.x;
+	cb.y = direction.y > 0.f ? pos.y + 1 : pos.y;
+	cb.z = direction.z > 0.f ? pos.z + 1 : pos.z;
+
+	vec3 tmax;
+	tmax.x = direction.x != 0.f ? ( cb.x - origin.x ) * rdinv.x : 1000000.f;
+	tmax.y = direction.y != 0.f ? ( cb.y - origin.y ) * rdinv.y : 1000000.f;
+	tmax.z = direction.z != 0.f ? ( cb.z - origin.z ) * rdinv.z : 1000000.f;
+
+	vec3 tdelta = step * rdinv;
+
+	pos = pos % 8;
+
+	int step_axis = -1;
+	vec3 mask;
+
+	while ( true )
+    {
+		int sub_data = ( pos.x + pos.y * brick_size + pos.z * brick_size * brick_size ) / 32;
+		int bit = ( pos.x + pos.y * brick_size + pos.z * brick_size * brick_size ) % 32;
+
+		chunk_bricks bricks_buf = brick_buf_pointers[chunk_index];
+		brick b = bricks_buf.bricks[brick_index];
+		uint brick_data = b.data[sub_data];
+
+		if ( ( brick_data & ( 1 << bit ) ) != 0 ) 
+        {
+			if ( step_axis > -1 )
+            {
+				normal = vec4( 0 );
+				normal[step_axis] = -step[step_axis];
+				distance = tmax[step_axis] - tdelta[step_axis];
+			}
+
+            return true;
+		}
+
+		step_axis = ( tmax.x < tmax.y ) ? ( ( tmax.x < tmax.z ) ? 0 : 2 ) : ( ( tmax.y < tmax.z ) ? 1 : 2 );
+		mask.x = float( tmax.x < tmax.y && tmax.x < tmax.z );
+		mask.y = float( tmax.y <= tmax.x && tmax.y < tmax.z );
+		mask.z = float( tmax.z <= tmax.x && tmax.z <= tmax.y );
+
+		pos += ivec3( mask * step );
+		if ( pos[step_axis] == outv[step_axis] )
+			break;
+		tmax += mask * tdelta;
+	}
+
+	return false;
+}
+
+// From http://www.jcgt.org/published/0006/02/01/
+// https://tavianator.com/2011/ray_box.html
+bool intersect_aabb_branchless( vec3 origin, vec3 rdinv, out float tmin )
+{
+	vec3 box_min = { 0, 0, 0 };
+	vec3 box_max = { grid_size, grid_size, grid_height };
+
+	vec3 t1 = ( box_min - origin ) * rdinv;
+	vec3 t2 = ( box_max - origin ) * rdinv;
+	vec3 t_min = min( t1, t2 );
+	vec3 t_max = max( t1, t2 );
+
+	tmin = max( max( t_min.x, 0.f ), max( t_min.y, t_min.z ) );
+	float tmax = min( t_max.x, min( t_max.y, t_max.z ) );
+    return tmax > tmin;
+}
+
+bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, vec4 camera_position )
+{
+	// Assumes direction is normalized and has no zero components.
+
+	vec3 rdinv = 1.f / direction;
+
+	// Early out if a ray falls outside the world bounds.
+	float tminn;
+	if ( !intersect_aabb_branchless( origin, rdinv, tminn ) )
+    {
+		return false;
+	}
+
+	if ( tminn > 0 ) 
+    {
+		origin += direction * tminn; // Move ray to the hit point.		
+
+		// Calculate the normal for the world.
+
+		vec3 scale = vec3(
+            1.f / ( grid_size / float( grid_height ) ), 
+            1.f / ( grid_size / float( grid_height ) ), 
+            1.f / ( grid_height / float( grid_height ) ) );
+		vec3 grid_center = vec3( grid_size / 2.f, grid_size / 2.f, grid_height / 2.f );
+
+		vec3 to_center = abs( grid_center - origin ) * scale;
+		vec3 signs = sign( origin - grid_center );
+
+		to_center /= max( to_center.x, max( to_center.y, to_center.z ) );
+		normal = vec4( signs * trunc( to_center + 0.000001f ), 1 );
+		
+		origin -= normal.xyz * normal_displacement;
+	}
+
+	// Transform the origin into chunk coordinates.
+	origin /= 8.f;	// Reduce by brick size.
+	ivec3 pos = ivec3( origin );
+
+	// Needed because sometimes the AABB intersect returns true while the ray is actually outside slightly.
+	// Only happens for faces that touch the AABB sides.
+	if ( pos.x < 0 || pos.x >= cells || pos.y < 0 || pos.y >= cells || pos.z < 0 || pos.z >= cells_height )
+    {
+        return false;
+	}
+	
+	// Grid Step Direction
+	// We advance pos by step each iteration.
+	vec3 step;
+	step.x = direction.x > 0.f ? 1.f : -1.f;
+	step.y = direction.y > 0.f ? 1.f : -1.f;
+	step.z = direction.z > 0.f ? 1.f : -1.f;
+
+	// Grid Boundary
+	// If pos == outv along some axis, then we have exited the volume.
+	ivec3 outv; 
+	outv.x = direction.x > 0.f ? cells : -1;
+	outv.y = direction.y > 0.f ? cells : -1;
+	outv.z = direction.z > 0.f ? cells_height : -1;
+
+	// Grid corner ? 
+	vec3 cb;
+	cb.x = direction.x > 0.f ? pos.x + 1 : pos.x;
+	cb.y = direction.y > 0.f ? pos.y + 1 : pos.y;
+	cb.z = direction.z > 0.f ? pos.z + 1 : pos.z;
+	
+	// Farthest distance along the ray before we exit?
+	vec3 tmax;
+	tmax.x = ( cb.x - origin.x ) * rdinv.x;
+	tmax.y = ( cb.y - origin.y ) * rdinv.y;
+	tmax.z = ( cb.z - origin.z ) * rdinv.z;
+
+	// A proportional step... ???
+	vec3 tdelta = step * rdinv;
+
+	int step_axis = -1;
+	vec3 mask;
+
+	while ( true )
+    {
+		int chunk_index = pos.x / chunk_size 
+			+ ( pos.y / chunk_size ) * supergrid_xy
+			+ ( pos.z / chunk_size ) * supergrid_xy * supergrid_xy;
+
+		chunk_indices indices_buf = index_buf_pointers[chunk_index];
+
+		int index_of_index = (pos.x % chunk_size) 
+            + (pos.y % chunk_size) * chunk_size 
+            + (pos.z % chunk_size) * chunk_size * chunk_size;
+
+		uint index = indices_buf.indices[index_of_index];
+
+		// Index will be 0 if the chunk contains only empty space.
+		if ( index != 0 ) 
+        {
+			// If we haven't stepped past the initial chunk, our distance is 0.
+			float chunk_distance = 0.f;
+			if ( step_axis != -1 )
+            {
+				// step_axis is the axis we exited the previous chunk from.
+				// The chunk's entry side's normal looks away from our step axis.
+				normal = vec4(0);
+				normal[step_axis] = -step[step_axis];
+
+				// How far we are from the outside edge of the chunk.
+				chunk_distance = tmax[step_axis] - tdelta[step_axis];
+			}
+
+			ivec3 difference = ivec3( camera_position.xyz - pos );
+			int lod_distance_squared = difference.x * difference.x + difference.y * difference.y + difference.z * difference.z;
+			float sub_distance = 0.f;
+
+			if ( lod_distance_squared > lod_distance_8x8x8 )
+            {
+				distance = chunk_distance * 8.f + tminn;
+				return true;
+			}
+            else if ( lod_distance_squared > lod_distance_2x2x2 )
+            {
+                uint byte = (index & brick_lod_bits) >> 12;
+                vec3 new_origin = ( origin + direction * chunk_distance ) * 2.f - normal.xyz * normal_displacement;
+                if ( intersect_byte( new_origin, direction, normal, sub_distance, byte ) )
+                {
+					distance = chunk_distance * 8.f + sub_distance * 4.f + tminn;
+					return true;
+                }
+			}
+            else
+            {	
+				// If brick_loaded_bit we can walk the interior of the brick.
+				if ( (index & brick_loaded_bit) != 0 )
+                {
+                    uint brick_index = index & brick_index_bits;
+                    vec3 brick_origin = (origin + direction * chunk_distance) * 8.f - normal.xyz * normal_displacement;
+                    if ( intersect_brick( brick_origin, direction, normal, sub_distance, brick_index, chunk_index ) )
+                    {
+						distance = chunk_distance * 8.f + sub_distance + tminn;
+						return true;
+					}
+				}
+
+				// Otherwise, request the brick to be loaded and say we hit it.
+					/*
+                else if ( (index & brick_unloaded_bit) > 0 )
+                {
+                    // fixmne!!
+                    uint old = atomicOr( dib.dim_indices[index], brick_requested_bit );
+//					uint old = atomicOr( &index, brick_requested_bit );
+
+					if ( ( old & brick_requested_bit ) == 0 )
+                    {
+						// request chunk to be loaded
+
+						const uint load_index = atomicAdd(load_queue_count, 1u);
+						if ( load_index < load_queue_count )
+                        {
+							bricks_to_load[load_index] = pos;
+						}
+                        else
+                        {
+							atomicAnd( dib.dim_indices[index], ~brick_requested_bit );
+							// ToDo happens a lot. Fix?
+						}
+					}
+
+					distance = new_distance * 8.f + tminn;
+					return true;
+				}
+				*/
+                
+			}
+		}
+
+		step_axis = ( tmax.x < tmax.y ) ? ( ( tmax.x < tmax.z ) ? 0 : 2 ) : ( ( tmax.y < tmax.z ) ? 1 : 2 );
+
+		mask.x = float( tmax.x < tmax.y && tmax.x < tmax.z );
+		mask.y = float( tmax.y <= tmax.x && tmax.y < tmax.z );
+		mask.z = float( tmax.z <= tmax.x && tmax.z <= tmax.y );
+
+		pos += ivec3( mask * step );
+		if ( pos[step_axis] == outv[step_axis] )
+			break;
+		tmax += mask * tdelta;
+	}
+
+    return false;
+}
+
+void main()
+{
+    uint index = atomicAdd( ray_number_connect, 1 );
+    if ( index >= shadow_ray_count )
+    {
+        return;
+    }
+
+    shadow_ray r = shadow_rays[index];
+
+    vec4 n = vec4(0);
+    float t = 0.f;
+    if ( !intersect_voxel( r.origin.xyz, r.direction.xyz, n, t, camera_position / 8.f ) )
+    {
+		colors[r.pixel_index] = r.color;
+    }
+}
