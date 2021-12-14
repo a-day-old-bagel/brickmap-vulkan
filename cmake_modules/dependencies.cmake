@@ -8,25 +8,6 @@ include( ExternalProject )
 message( "Updating dependencies..." )
 
 #
-# nlohmann/json
-#
-
-message( "  [json]" )
-
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY "https://github.com/nlohmann/json.git"
-  GIT_TAG "v3.10.4"
-)
-
-FetchContent_GetProperties( json )
-if( NOT json_POPULATED )
-  FetchContent_Populate( json )
-  add_library( json INTERFACE )
-  target_include_directories( json SYSTEM INTERFACE "${json_SOURCE_DIR}/include" )
-endif()
-
-#
 # glfw
 #
 
@@ -59,67 +40,18 @@ FetchContent_Declare(
 FetchContent_GetProperties( glm )
 if ( NOT glm_POPULATED )
   FetchContent_Populate( glm )
-#  add_subdirectory( ${glm_SOURCE_DIR} ${glm_BINARY_DIR} EXCLUDE_FROM_ALL )
   add_library( glm INTERFACE )
   target_include_directories( glm SYSTEM INTERFACE "${glm_SOURCE_DIR}" )
 endif()
 
 #
-# fmt
+# glslc
+# Shader program compiler must be available.
 #
 
-message( "  [fmt]" )
+message( "  [glslc]" )
 
-FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY "https://github.com/fmtlib/fmt.git"
-  GIT_TAG "8.0.1"
-)
-
-FetchContent_GetProperties( fmt )
-if ( NOT fmt_POPULATED )
-  FetchContent_Populate( fmt )
-  add_subdirectory( ${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL )
-endif()
-
-#
-# spdlog
-#
-
-message( "  [spdlog]" )
-
-FetchContent_Declare(
-  spdlog
-  GIT_REPOSITORY "https://github.com/gabime/spdlog.git"
-  GIT_TAG "v1.9.2"
-)
-
-FetchContent_GetProperties( spdlog )
-if ( NOT spdlog_POPULATED )
-  FetchContent_Populate( spdlog )
-  add_subdirectory( ${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL )
-endif()
-
-#
-# tracy
-#
-
-message( "  [tracy]" )
-
-FetchContent_Declare(
-  tracy
-  GIT_REPOSITORY "https://github.com/wolfpld/tracy.git"
-  GIT_TAG "master"
-)
-
-FetchContent_GetProperties( tracy )
-if ( NOT tracy_POPULATED )
-  FetchContent_Populate( tracy )
-  set( TRACY_DIR "${tracy_SOURCE_DIR}" CACHE FILEPATH "Path to Tracy" )
-  add_library( tracy OBJECT "${tracy_SOURCE_DIR}/TracyClient.cpp" )
-  target_include_directories( tracy PUBLIC "${tracy_SOURCE_DIR}" )
-  target_compile_definitions( tracy PUBLIC TRACY_ENABLE )
-endif()
+find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
 
 #
 # imgui
@@ -154,6 +86,66 @@ if ( NOT imgui_POPULATED )
 endif()
 
 #
+# nlohmann/json
+#
+
+message( "  [json]" )
+
+FetchContent_Declare(
+  json
+  GIT_REPOSITORY "https://github.com/nlohmann/json.git"
+  GIT_TAG "v3.10.4"
+)
+
+FetchContent_GetProperties( json )
+if( NOT json_POPULATED )
+  FetchContent_Populate( json )
+  add_library( json INTERFACE )
+  target_include_directories( json SYSTEM INTERFACE "${json_SOURCE_DIR}/include" )
+endif()
+
+#
+# simplex-noise
+#
+
+message( "  [simplex-noise]" )
+
+FetchContent_Declare(
+  simplex-noise
+  GIT_REPOSITORY "https://github.com/SRombauts/SimplexNoise.git"
+  GIT_TAG "master"
+)
+
+FetchContent_GetProperties( tinyobj )
+if ( NOT simplex-noise_POPULATED )
+  FetchContent_Populate( simplex-noise )
+  add_library(simplex-noise STATIC)
+  target_sources(simplex-noise PRIVATE 
+      "${simplex-noise_SOURCE_DIR}/src/SimplexNoise.h"
+      "${simplex-noise_SOURCE_DIR}/src/SimplexNoise.cpp"
+  )
+  target_include_directories( simplex-noise SYSTEM PUBLIC "${simplex-noise_SOURCE_DIR}/src" )
+endif()
+
+#
+# spdlog
+#
+
+message( "  [spdlog]" )
+
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY "https://github.com/gabime/spdlog.git"
+  GIT_TAG "v1.9.2"
+)
+
+FetchContent_GetProperties( spdlog )
+if ( NOT spdlog_POPULATED )
+  FetchContent_Populate( spdlog )
+  add_subdirectory( ${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR} EXCLUDE_FROM_ALL )
+endif()
+
+#
 # spirv-reflect
 #
 
@@ -175,6 +167,27 @@ if ( NOT spirv-reflect_POPULATED )
   )
   target_include_directories(spirv_reflect SYSTEM PUBLIC "${spirv-reflect_SOURCE_DIR}/" )
   target_include_directories(spirv_reflect SYSTEM PUBLIC "${spirv-reflect_SOURCE_DIR}/include" )
+endif()
+
+#
+# tracy
+#
+
+message( "  [tracy]" )
+
+FetchContent_Declare(
+  tracy
+  GIT_REPOSITORY "https://github.com/wolfpld/tracy.git"
+  GIT_TAG "master"
+)
+
+FetchContent_GetProperties( tracy )
+if ( NOT tracy_POPULATED )
+  FetchContent_Populate( tracy )
+  set( TRACY_DIR "${tracy_SOURCE_DIR}" CACHE FILEPATH "Path to Tracy" )
+  add_library( tracy OBJECT "${tracy_SOURCE_DIR}/TracyClient.cpp" )
+  target_include_directories( tracy PUBLIC "${tracy_SOURCE_DIR}" )
+  target_compile_definitions( tracy PUBLIC TRACY_ENABLE )
 endif()
 
 #
@@ -222,34 +235,5 @@ message( "  [vulkan]" )
 
 find_package(Vulkan REQUIRED COMPONENTS glslc)
 
-#
-# glslc
-# Shader program compiler must be available.
-#
 
-message( "  [glslc]" )
 
-find_program(glslc_executable NAMES glslc HINTS Vulkan::glslc)
-
-#
-# simplex-noise
-#
-
-message( "  [simplex-noise]" )
-
-FetchContent_Declare(
-  simplex-noise
-  GIT_REPOSITORY "https://github.com/SRombauts/SimplexNoise.git"
-  GIT_TAG "master"
-)
-
-FetchContent_GetProperties( tinyobj )
-if ( NOT simplex-noise_POPULATED )
-  FetchContent_Populate( simplex-noise )
-  add_library(simplex-noise STATIC)
-  target_sources(simplex-noise PRIVATE 
-      "${simplex-noise_SOURCE_DIR}/src/SimplexNoise.h"
-      "${simplex-noise_SOURCE_DIR}/src/SimplexNoise.cpp"
-  )
-  target_include_directories( simplex-noise SYSTEM PUBLIC "${simplex-noise_SOURCE_DIR}/src" )
-endif()
