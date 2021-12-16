@@ -1,3 +1,25 @@
+//// Atmospheric scattering model
+////
+//// IMPORTANT COPYRIGHT INFO:
+//// -----------------------------------
+//// The license of this fragment is not completely clear to me, but for all I
+//// can tell this shader derives from the MIT licensed source given below.
+////
+//// This fragment derives from this shader: http://glsl.herokuapp.com/e#9816.0
+//// written by Martijn Steinrucken: countfrolic@gmail.com
+////
+//// Which in turn contained the following copyright info:
+//// Code adapted from Martins:
+////
+///http://blenderartists.org/forum/showthread.php?242940-unlimited-planar-reflections-amp-refraction-%28update%29
+////
+//// Which in turn originates from:
+////
+///https://github.com/SimonWallner/kocmoc-demo/blob/RTVIS/media/shaders/sky.frag
+//// where it was MIT licensed:
+//// https://github.com/SimonWallner/kocmoc-demo/blob/RTVIS/README.rst
+//// Heavily altered by stijnherfst
+
 vec3 fromSpherical( vec2 p )
 {
 	return vec3(cos(p.x) * sin(p.y), sin(p.x) * sin(p.y), cos(p.y));
