@@ -12,11 +12,12 @@ namespace rebel_road
     {
         class render_context;
         class worker;
+        class image;
     }
 
     namespace voxel
     {
-        constexpr uint32_t rq_buf_size = 4 * 1'048'576; // Adjusted for the initial settings. Not optimized.
+        constexpr uint32_t rq_buf_size = 2 * 1'048'576; // Adjusted for the initial settings. Not optimized.
 
         struct gpu_ray
         {
@@ -65,24 +66,29 @@ namespace rebel_road
             glm::vec4 camera_position {};
             float focal_distance {};
             float lens_radius {};
+            uint32_t enable_depth_of_field {};
+            uint32_t render_mode {};
             glm::vec2 sun_position {};
         };
 
         class ray_tracer
         {
         public:
-            static std::unique_ptr<ray_tracer> create( vulkan::render_context* in_render_ctx, vk::Extent2D in_render_extent, std::shared_ptr<world> in_world );
+            static std::unique_ptr<ray_tracer> create( vulkan::render_context* in_render_ctx, vk::Extent2D in_render_extent );
             ray_tracer() = delete;
-            ray_tracer( vulkan::render_context* in_render_ctx, vk::Extent2D in_render_extent, std::shared_ptr<world> in_world );
+            ray_tracer( vulkan::render_context* in_render_ctx, vk::Extent2D in_render_extent );
 
             void shutdown();
 
+            void bind_world( std::shared_ptr<world> in_world );
             void update_camera( stage::camera& camera );
 
-            void render( vk::CommandBuffer cmd );
+            void compute_rays();
+            void draw( vk::CommandBuffer cmd );
 
             // temp:
             glm::vec2 sun_position { 0.005, 0.1 };
+            uint32_t render_mode{};
 
         private:
             void init();
@@ -92,9 +98,6 @@ namespace rebel_road
             void init_shade();
             void init_connect();
 
-            void blit( vk::CommandBuffer cmd );
-            void visualize_primary_rays( vk::CommandBuffer cmd );
-
             vulkan::buffer<gpu_wavefront_state> global_state;
             vk::DescriptorSet global_state_set;
             vk::Pipeline global_state_pipeline;
@@ -102,7 +105,6 @@ namespace rebel_road
 
             vulkan::buffer<gpu_ray> primary_rays[2];
             vk::DescriptorSet primary_rays_set[2];
-            vk::DescriptorSet primary_rays_vis_set[2];
             gpu_push_constants push_constants;
             vk::Pipeline primary_rays_pipeline;
             vk::PipelineLayout primary_rays_layout;
@@ -114,6 +116,7 @@ namespace rebel_road
             vk::Pipeline extend_pipeline;
             vk::PipelineLayout extend_layout;
             vk::DescriptorSet extend_set;
+            vk::DescriptorSet world_set;
 
             vk::Pipeline shade_pipeline;
             vk::PipelineLayout shade_layout;
@@ -130,6 +133,10 @@ namespace rebel_road
             vk::Pipeline render_pipeline;
             vk::PipelineLayout render_layout;
             std::vector<vk::Framebuffer> framebuffers;
+            std::vector<std::shared_ptr<vulkan::image>> render_targets;
+
+            vk::CommandPool command_pool;
+            vk::CommandBuffer command_buffer;
 
             vulkan::render_context* render_ctx {};
             vulkan::device_context* device_ctx {};

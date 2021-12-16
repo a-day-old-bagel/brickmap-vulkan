@@ -3,6 +3,6 @@
       "app_name": "BrickMap Vulkan",
       "width": 1920,
       "height": 1080,
-      "use_validation_layers": true
+      "use_validation_layers": false
     }
   }

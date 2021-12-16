@@ -1,6 +1,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_shader_atomic_float : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_debug_printf : enable
 layout(local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
@@ -15,12 +17,12 @@ layout (std430, set = 0, binding = 0) buffer ray_buffer
 	ray rays[]; 
 };
 
-layout (std430, set = 1, binding = 0) buffer ray_buffer_next
+layout (std430, set = 0, binding = 1) buffer ray_buffer_next
 {
 	ray rays_next[]; 
 };
 
-layout (std430, set = 2, binding = 0) buffer globals_buffer
+layout (std430, set = 1, binding = 0) buffer globals_buffer
 {
     uint start_position;
     uint primary_ray_count;
@@ -32,14 +34,27 @@ layout (std430, set = 2, binding = 0) buffer globals_buffer
     uint ray_queue_buffer_size;
 };
 
-layout (std430, set = 2, binding = 1) buffer shadow_buffer
+layout (std430, set = 1, binding = 1) buffer shadow_buffer
 {
 	shadow_ray shadow_rays[]; 
 };
 
-layout (set = 3, binding = 0) buffer blit_buffer
+layout (set = 2, binding = 0) buffer blit_buffer
 {
     vec4 colors[];
+};
+
+layout (std430, set = 3, binding = 0 ) buffer world_config
+{
+	int grid_size;
+	int grid_height;
+	int chunk_size;
+	int chunk_count;
+	ivec4 world_size;
+	int cells;
+	int cells_height;
+	int lod_distance_8x8x8;
+	int lod_distance_2x2x2;
 };
 
 layout (push_constant) uniform push_constants
@@ -57,6 +72,8 @@ layout (push_constant) uniform push_constants
     vec4 camera_position;
     float focal_distance;
     float lens_radius;
+    uint enable_depth_of_field;
+    uint render_mode;
     vec2 sun_position;
 };
 
@@ -113,6 +130,11 @@ void main()
 
 	if ( r.distance < VERY_FAR && r.distance > 0 )
 	{
+		if ( render_mode > 1 )
+		{
+			return;
+		}
+		
 		r.origin += r.direction * r.distance;
 		//Prevent self-intersection
 		r.origin += r.normal * normal_displacement;
@@ -178,33 +200,11 @@ void main()
 //			color = r.throughput.xyz * (r.bounces == 0 ? sunsky(r.direction.xyz,sun_direction,sun_angular) : sky(r.direction.xyz,sun_direction));
 //			colors[r.pixel_index] = vec4(color,1);
 //		}
-		////Russian roullete
-		//float p = glm::min(1.0f, glm::max(ray.direct.z, glm::max(ray.direct.x, ray.direct.y)));
-		//if (ray.bounces < MAX_BOUNCES && p > (0.f + epsilon) && RandomFloat(seed) <= p) {
-		//	//Add rays into the next ray_buffer to be processed next frame
-		//	ray.bounces++;
-		//	ray.direct *= 1.0f / p;
-
-		//	unsigned primary_index = atomicAdd(&primary_ray_cnt, 1);
-		//	ray_buffer_next[primary_index] = ray;
-		//} else { // MAX BOUNCES
-		//	new_frame += 1.f;
-		//}
-
 	} 
-//	else
-//	{
-		// NOTHING HIT
-		// Don't generate new extended ray. Directly add emmisivity of sun/sky.
 
-		vec3 color = r.throughput.xyz * (r.bounces == 0 ? sunsky(r.direction.xyz,sun_direction,sun_angular) : sky(r.direction.xyz,sun_direction));
-		colors[r.pixel_index] = vec4(color,1);
-		/*
-		atomicExchange( colors[r.pixel_index].r, color.r );
-		atomicExchange( colors[r.pixel_index].g, color.g );
-		atomicExchange( colors[r.pixel_index].b, color.b );
-		float alpha = 1.f;
-		atomicExchange( colors[r.pixel_index].a, alpha );
-		*/
-//	}
+	// NOTHING HIT
+	// Don't generate new extended ray. Directly add emmisivity of sun/sky.
+
+	vec3 color = r.throughput.xyz * (r.bounces == 0 ? sunsky(r.direction.xyz,sun_direction,sun_angular) : sky(r.direction.xyz,sun_direction));
+	colors[r.pixel_index] = vec4(color,1);
 }

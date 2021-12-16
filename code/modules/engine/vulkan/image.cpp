@@ -132,10 +132,16 @@ namespace rebel_road
             default_view = device_ctx->create_image_view( image_view_create_info );
         }
 
-
         void image::transition_layout( vk::CommandBuffer cmd, vk::ImageLayout layout_from, vk::ImageLayout layout_to, vk::AccessFlagBits access_from, vk::AccessFlagBits access_to, vk::ImageSubresourceRange range )
         {
             vk::ImageMemoryBarrier barrier { vulkan::image_barrier( vk_image, access_from, access_to, layout_from, layout_to, {} ) };
+            barrier.subresourceRange = range;
+            cmd.pipelineBarrier( vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, {}, 0, nullptr, 0, nullptr, 1, &barrier );
+        }
+
+        void image::transition_layout( vk::CommandBuffer cmd, vk::Image image, vk::ImageLayout layout_from, vk::ImageLayout layout_to, vk::AccessFlagBits access_from, vk::AccessFlagBits access_to, vk::ImageSubresourceRange range )
+        {
+            vk::ImageMemoryBarrier barrier { vulkan::image_barrier( image, access_from, access_to, layout_from, layout_to, {} ) };
             barrier.subresourceRange = range;
             cmd.pipelineBarrier( vk::PipelineStageFlagBits::eAllCommands, vk::PipelineStageFlagBits::eAllCommands, {}, 0, nullptr, 0, nullptr, 1, &barrier );
         }

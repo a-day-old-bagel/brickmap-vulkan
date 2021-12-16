@@ -17,13 +17,14 @@ namespace rebel_road
         class buffer
         {
         public:
-            void allocate( size_t alloc_size, vk::BufferUsageFlags usage, VmaMemoryUsage memory_usage, vk::MemoryPropertyFlags required_flags = {} )
+            void allocate( size_t alloc_size, vk::BufferUsageFlags usage, VmaMemoryUsage in_memory_usage, vk::MemoryPropertyFlags required_flags = {} )
             {
                 vk::BufferCreateInfo buffer_info {};
                 buffer_info.size = alloc_size;
                 buffer_info.usage = usage;
 
                 size = alloc_size;
+                memory_usage = in_memory_usage;
 
                 const VmaAllocationCreateInfo vma_alloc_info
                 {
@@ -54,6 +55,30 @@ namespace rebel_road
             {
                 T* address = mapped_data();
                 memcpy( reinterpret_cast<std::byte*>( address ) + offset, data, upload_size );
+            }
+
+            // User is responsible for freeing the staging buffer that is returned.
+            // Todo: automate handling of staging buffers...
+            vulkan::buffer<T> upload_to_buffer( vk::CommandBuffer cmd, const T* data, size_t upload_size, size_t offset = 0 )
+            {
+                vulkan::buffer<T> staging;
+
+                if ( memory_usage == VMA_MEMORY_USAGE_GPU_TO_CPU || memory_usage == VMA_MEMORY_USAGE_GPU_ONLY )
+                {
+                    staging.allocate( upload_size, vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_CPU_ONLY );
+                    staging.upload_to_buffer( data, upload_size, offset );
+
+                    vk::BufferCopy copy {};
+                    copy.size = upload_size;
+                    cmd.copyBuffer( staging.buf, buf, 1, &copy );
+                }
+                else
+                {
+                    // Put this here because other usages might require different barriers.
+                    spdlog::critical( "Unimplemented buffer upload." );
+                }
+
+                return staging;
             }
 
             inline vk::DescriptorBufferInfo get_info( VkDeviceSize offset = 0 ) const
@@ -95,9 +120,12 @@ namespace rebel_road
             vk::Buffer buf {};
             VmaAllocation allocation {};
             vk::DeviceSize size { 0 };
+            VmaMemoryUsage memory_usage;
         };
 
         vk::DeviceAddress get_buffer_device_address( const vk::Buffer& buf );
+
+        
 
     }
 }

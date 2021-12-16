@@ -35,10 +35,12 @@ namespace rebel_road
             void submit_and_present();
 
             vk::Queue get_graphics_queue() { return device_ctx->graphics_queue; }
+            vk::Queue get_transfer_queue() { return device_ctx->transfer_queue; }
 
             uint32_t get_frame_number() { return frame_number; } 
             frame& current_frame();
-            frame& last_frame();
+            frame& previous_frame();
+            frame& get_frame( uint32_t idx ) { return frames[idx]; }
 
             uint32_t get_swapchain_image_index();
             vk::Image get_swapchain_image();
@@ -49,6 +51,8 @@ namespace rebel_road
             device_context* get_device_context() const { return device_ctx; }
 
             uint32_t get_frame_count() { return FRAME_OVERLAP; }
+
+            tracy::VkCtx* get_tracy_context() { return graphics_profiling_context; }
 
         private:
 

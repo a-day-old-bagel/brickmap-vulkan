@@ -1,5 +1,7 @@
 #include "push_buffer.h"
 
+// https://vkguide.dev/
+
 namespace rebel_road
 {
 

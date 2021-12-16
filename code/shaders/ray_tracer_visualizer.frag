@@ -18,6 +18,8 @@ layout (push_constant) uniform push_constants
     vec4 camera_position;
     float focal_distance;
     float lens_radius;
+    uint enable_depth_of_field;
+    uint render_mode;
     vec2 sun_position;
 };
 

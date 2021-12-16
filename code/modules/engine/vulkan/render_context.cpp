@@ -103,6 +103,8 @@ namespace rebel_road
 
         vk::CommandBuffer render_context::begin_frame()
         {
+            frame_number++;
+            
             current_frame().begin_frame();
 
             frame_cmd = current_frame().command_buffer;
@@ -127,7 +129,7 @@ namespace rebel_road
             return frames[frame_number % FRAME_OVERLAP];
         }
 
-        frame& render_context::last_frame()
+        frame& render_context::previous_frame()
         {
             return frames[( frame_number - 1 ) % 2];
         }

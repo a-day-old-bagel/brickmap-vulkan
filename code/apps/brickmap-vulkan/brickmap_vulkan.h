@@ -9,10 +9,10 @@
 namespace rebel_road
 {
 
-    namespace apps 
+    namespace apps
     {
 
-        class brickmap_vulkan_app: public vulkan_app
+        class brickmap_vulkan_app : public vulkan_app
         {
         public:
             ~brickmap_vulkan_app() {}
@@ -35,8 +35,12 @@ namespace rebel_road
             virtual app_state on_running();
             virtual app_state on_cleanup();
 
+            void generate_world();
+
             stage::camera camera;
-            glm::vec2 sun_position{ 0.005, 0.1 };
+            glm::vec2 sun_position { 0.005, 0.1 };
+            bool enable_shadows { true };
+            int render_mode {};
 
             vk::RenderPass render_pass;
             std::vector<vk::Framebuffer> framebuffers;
@@ -46,7 +50,7 @@ namespace rebel_road
 
             std::unique_ptr<imgui::imgui_context> imgui_ctx;
 
-            float previous_time{0.f};
+            float previous_time { 0.f };
         };
     }
 

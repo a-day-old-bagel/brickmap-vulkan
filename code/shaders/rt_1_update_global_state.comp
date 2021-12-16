@@ -28,6 +28,8 @@ layout (push_constant) uniform push_constants
     vec4 camera_position;
     float focal_distance;
     float lens_radius;
+    uint enable_depth_of_field;
+    uint render_mode;
     vec2 sun_position;
 };
 
@@ -41,7 +43,6 @@ void main()
     // Next step we start from prev starting position incremented by how much we progressed this frame
     start_position += progress_last_frame;
     start_position = start_position % ( render_width * render_height );
-    start_position = 0;
 
     // Zero out counters atomically incremented for all wavefront kernels.
     primary_ray_count = 0;

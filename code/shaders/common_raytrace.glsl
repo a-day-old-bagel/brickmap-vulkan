@@ -1,3 +1,5 @@
+const float VERY_FAR = 1e20f;
+
 struct ray
 {
 	vec4 origin;
@@ -26,17 +28,4 @@ struct ray_hit
     vec3 normal;
     float distance;
     bool hit;
-};
-
-struct brick
-{
-    uint data[cell_members];
-};
-
-struct supercell 
-{
-    uint brick_first;
-    uint brick_count;
-    uint index_first;
-    uint index_count;
 };

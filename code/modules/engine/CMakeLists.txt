@@ -9,7 +9,8 @@ target_include_directories( rebel_engine PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" )
 
 target_precompile_headers( rebel_engine PRIVATE engine.pch.h )
 
-target_compile_definitions( rebel_engine PUBLIC TRACY_ENABLE GLM_FORCE_DEPTH_ZERO_TO_ONE )
+target_compile_definitions( rebel_engine PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE )
+#target_compile_definitions( rebel_engine PUBLIC TRACY_ENABLE GLM_FORCE_DEPTH_ZERO_TO_ONE )
 #target_compile_definitions( rebel_engine PUBLIC TRACY_ENABLE GLM_FORCE_DEPTH_ZERO_TO_ONE DEBUG_MARKER_ENABLE )
 
 #target_compile_options( rebel_engine PUBLIC /fsanitize=address )

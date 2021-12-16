@@ -220,6 +220,8 @@ namespace rebel_road
 
         void device_context::init_queues()
         {
+            compute_queue = vkb_device.get_queue( vkb::QueueType::compute ).value();
+            compute_queue_family = vkb_device.get_queue_index( vkb::QueueType::compute ).value();
             graphics_queue = vkb_device.get_queue( vkb::QueueType::graphics ).value();
             graphics_queue_family = vkb_device.get_queue_index( vkb::QueueType::graphics ).value();
             transfer_queue = vkb_device.get_queue( vkb::QueueType::transfer ).value();
@@ -455,6 +457,21 @@ namespace rebel_road
                 framebuffers.push_back( create_framebuffer( render_pass, fb_attachments, render_extent ) );
             }
             return framebuffers;
+        }
+
+        vk::CommandPool device_context::create_command_pool( uint32_t family, vk::CommandPoolCreateFlags flags )
+        {
+            auto command_pool_info = vulkan::command_pool_create_info( family, flags );
+            auto command_pool = device.createCommandPool( command_pool_info );
+            deletion_queue.push_function( [=,this] () { device.destroyCommandPool( command_pool ); } );
+            return command_pool;
+        }
+
+        vk::Semaphore device_context::create_semaphore( const vk::SemaphoreCreateInfo create_info )
+        {
+            auto semaphore = device.createSemaphore( create_info );
+            deletion_queue.push_function( [=,this] () { device.destroySemaphore( semaphore ); } );
+            return semaphore;
         }
 
         void device_context::render_stats()

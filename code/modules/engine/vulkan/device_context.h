@@ -64,6 +64,8 @@ namespace rebel_road
             std::pair<vk::Image, VmaAllocation> create_image( const vk::ImageCreateInfo& create_info, const VmaAllocationCreateInfo& alloc_info );
             vk::Sampler create_sampler( const vk::SamplerCreateInfo& create_info );
             std::vector<vk::Framebuffer> create_swap_chain_framebuffers( vk::RenderPass render_pass, vk::Extent2D render_extent, std::vector<vk::ImageView> attachments = {} );
+            vk::Semaphore create_semaphore( const vk::SemaphoreCreateInfo create_info );
+            vk::CommandPool create_command_pool( uint32_t family, vk::CommandPoolCreateFlags flags );
 
             vkb::Instance vkb_instance;
             vkb::Device vkb_device;
@@ -83,6 +85,8 @@ namespace rebel_road
             std::vector<vk::Image> swapchain_images;
             std::vector<vk::ImageView> swapchain_image_views;
 
+            vk::Queue compute_queue;
+            uint32_t compute_queue_family;
             vk::Queue graphics_queue;
             uint32_t graphics_queue_family;
             vk::Queue transfer_queue;

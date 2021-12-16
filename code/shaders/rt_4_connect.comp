@@ -40,18 +40,35 @@ layout( buffer_reference, std430 ) buffer chunk_indices
     uint indices[];
 };
 
-layout (std430, set = 1, binding = 0 ) buffer supergrid
+layout (std430, set = 1, binding = 0 ) buffer index_buf_ptrs
 {
-    chunk_indices index_buf_pointers[world_size];
-    chunk_bricks brick_buf_pointers[world_size];
+    chunk_indices index_buf_pointers[];
 };
 
-layout (std430, set = 1, binding = 1 ) buffer brick_load_queue
+layout (std430, set = 1, binding = 1 ) buffer brick_buf_ptrs
+{
+    chunk_bricks brick_buf_pointers[];
+};
+
+layout (std430, set = 1, binding = 2 ) buffer world_config
+{
+	int grid_size;
+	int grid_height;
+	int chunk_size;
+	int chunk_count;
+	ivec4 world_size;
+	int cells;
+	int cells_height;
+	int lod_distance_8x8x8;
+	int lod_distance_2x2x2;
+};
+
+layout ( std430, set = 1, binding = 3 ) buffer brick_load_queue
 {
 	uint load_queue_count;
+	uint padlq0;
 	uint padlq1;
 	uint padlq2;
-	uint padlq3;
 	ivec4 bricks_to_load[brick_load_queue_size];
 };
 
@@ -75,11 +92,9 @@ layout (push_constant) uniform push_constants
     vec4 camera_position;
     float focal_distance;
     float lens_radius;
+    uint enable_depth_of_field;
+    uint render_mode;
     vec2 sun_position;
-    float shagga;
-    float pad1;
-    float pad2;
-    float pad3;
 };
 
 bool intersect_byte( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, uint byte )
@@ -143,7 +158,7 @@ bool intersect_byte( vec3 origin, vec3 direction, inout vec4 normal, inout float
 	return false;
 }
 
-bool intersect_brick( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, uint brick_index, uint chunk_index )
+bool intersect_brick( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, uint brick_index, uint chunk_index, inout uint iter )
 {
 	ivec3 pos = ivec3( origin );
 	
@@ -178,6 +193,8 @@ bool intersect_brick( vec3 origin, vec3 direction, inout vec4 normal, inout floa
 
 	while ( true )
     {
+		iter++;
+
 		int sub_data = ( pos.x + pos.y * brick_size + pos.z * brick_size * brick_size ) / 32;
 		int bit = ( pos.x + pos.y * brick_size + pos.z * brick_size * brick_size ) % 32;
 
@@ -228,7 +245,7 @@ bool intersect_aabb_branchless( vec3 origin, vec3 rdinv, out float tmin )
     return tmax > tmin;
 }
 
-bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, vec4 camera_position )
+bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout float distance, vec4 camera_position, inout uint iter )
 {
 	// Assumes direction is normalized and has no zero components.
 
@@ -259,7 +276,8 @@ bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout floa
 		to_center /= max( to_center.x, max( to_center.y, to_center.z ) );
 		normal = vec4( signs * trunc( to_center + 0.000001f ), 1 );
 		
-		origin -= normal.xyz * normal_displacement;
+		// Is this incorrect? Artifacts appear when sufficiently far away from outside the world bounds. (Fly up real far and look down.)
+		origin -= normal.xyz * 0.0001; // Push the ray into the bounds.
 	}
 
 	// Transform the origin into chunk coordinates.
@@ -307,9 +325,11 @@ bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout floa
 
 	while ( true )
     {
+		iter++;
+
 		int chunk_index = pos.x / chunk_size 
-			+ ( pos.y / chunk_size ) * supergrid_xy
-			+ ( pos.z / chunk_size ) * supergrid_xy * supergrid_xy;
+			+ ( pos.y / chunk_size ) * world_size.x
+			+ ( pos.z / chunk_size ) * world_size.x * world_size.y;
 
 		chunk_indices indices_buf = index_buf_pointers[chunk_index];
 
@@ -361,7 +381,7 @@ bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout floa
                 {
                     uint brick_index = index & brick_index_bits;
                     vec3 brick_origin = (origin + direction * chunk_distance) * 8.f - normal.xyz * normal_displacement;
-                    if ( intersect_brick( brick_origin, direction, normal, sub_distance, brick_index, chunk_index ) )
+                    if ( intersect_brick( brick_origin, direction, normal, sub_distance, brick_index, chunk_index, iter ) )
                     {
 						distance = chunk_distance * 8.f + sub_distance + tminn;
 						return true;
@@ -369,34 +389,33 @@ bool intersect_voxel( vec3 origin, vec3 direction, inout vec4 normal, inout floa
 				}
 
 				// Otherwise, request the brick to be loaded and say we hit it.
-					/*
                 else if ( (index & brick_unloaded_bit) > 0 )
                 {
-                    // fixmne!!
-                    uint old = atomicOr( dib.dim_indices[index], brick_requested_bit );
-//					uint old = atomicOr( &index, brick_requested_bit );
-
-					if ( ( old & brick_requested_bit ) == 0 )
-                    {
-						// request chunk to be loaded
-
-						const uint load_index = atomicAdd(load_queue_count, 1u);
-						if ( load_index < load_queue_count )
-                        {
-							bricks_to_load[load_index] = pos;
-						}
-                        else
-                        {
-							atomicAnd( dib.dim_indices[index], ~brick_requested_bit );
-							// ToDo happens a lot. Fix?
+					// If the load queue is full, we'll have to wait.
+					if ( load_queue_count < brick_load_queue_size )
+					{
+						// Mark the brick requested and if it hasn't been previously requested add it to the load queue.
+						uint old = atomicOr( indices_buf.indices[index_of_index], brick_requested_bit );
+						if ( ( old & brick_requested_bit ) == 0 )
+						{
+							const uint load_index = atomicAdd( load_queue_count, 1u );
+							if ( load_index < brick_load_queue_size )
+							{
+								bricks_to_load[load_index] = ivec4(pos,1);
+							}
+							else
+							{
+								// The load queue is full.
+								// If this happens a lot, increase the queue size.
+								atomicAnd( indices_buf.indices[index_of_index], ~brick_requested_bit );
+							}
 						}
 					}
 
-					distance = new_distance * 8.f + tminn;
+					// Display the LOD in the mean time.
+					distance = chunk_distance * 8.f + tminn;
 					return true;
 				}
-				*/
-                
 			}
 		}
 
@@ -423,11 +442,17 @@ void main()
         return;
     }
 
+	if ( render_mode > 0 )
+	{
+		return;
+	}
+
     shadow_ray r = shadow_rays[index];
 
+	uint iter = 0;
     vec4 n = vec4(0);
     float t = 0.f;
-    if ( !intersect_voxel( r.origin.xyz, r.direction.xyz, n, t, camera_position / 8.f ) )
+    if ( !intersect_voxel( r.origin.xyz, r.direction.xyz, n, t, camera_position / 8.f, iter ) )
     {
 		colors[r.pixel_index] = r.color;
     }

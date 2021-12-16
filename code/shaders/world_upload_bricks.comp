@@ -4,27 +4,28 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_ARB_gpu_shader_int64 : require
 #extension GL_EXT_debug_printf : enable
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout ( local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
 
 #include "common_brickmap.glsl"
 #include "common_raytrace.glsl"
 
-layout (std430, set = 0, binding = 0) buffer bricks_load_queue
+layout ( std430, set = 0, binding = 0 ) buffer bricks_load_queue
 {
 	brick bricks_queue[brick_load_queue_size]; 
 };
 
-layout (std430, set = 0, binding = 1) buffer indices_load_queue
+layout ( std430, set = 0, binding = 1 ) buffer indices_load_queue
 {
 	uint indices_queue[brick_load_queue_size]; 
 };
 
-layout (std430, set = 0, binding = 2) buffer brick_load_queue
+layout ( std430, set = 0, binding = 2 ) buffer brick_load_queue
 {
 	uint load_queue_count;
+	uint padlq0;
 	uint padlq1;
 	uint padlq2;
-	uint padlq3;
 	ivec4 bricks_to_load[brick_load_queue_size];
 };
 
@@ -38,10 +39,27 @@ layout( buffer_reference, std430 ) buffer chunk_indices
     uint indices[];
 };
 
-layout (std430, set = 0, binding = 3 ) buffer supergrid
+layout (std430, set = 0, binding = 3 ) buffer index_buf_ptrs
 {
-    chunk_indices index_buf_pointers[world_size];
-    chunk_bricks brick_buf_pointers[world_size];
+    chunk_indices index_buf_pointers[];
+};
+
+layout (std430, set = 0, binding = 4 ) buffer brick_buf_ptrs
+{
+    chunk_bricks brick_buf_pointers[];
+};
+
+layout (std430, set = 0, binding = 5 ) buffer world_config
+{
+	int grid_size;
+	int grid_height;
+	int chunk_size;
+	int chunk_count;
+	ivec4 world_size;
+	int cells;
+	int cells_height;
+	int lod_distance_8x8x8;
+	int lod_distance_2x2x2;
 };
 
 void main()
@@ -53,7 +71,7 @@ void main()
 	uint brick_index = new_index & brick_index_bits;
 
 	ivec3 pos = bricks_to_load[queue_index].xyz;
-	int chunk_index = pos.x / chunk_size + (pos.y / chunk_size) * supergrid_xy + (pos.z / chunk_size) * supergrid_xy * supergrid_xy;
+	int chunk_index = pos.x / chunk_size + (pos.y / chunk_size) * world_size.x + (pos.z / chunk_size) * world_size.x * world_size.y;
 	uint index_of_index = (pos.x % chunk_size) + (pos.y % chunk_size) * chunk_size + (pos.z % chunk_size) * chunk_size * chunk_size;
 
     chunk_bricks cb = brick_buf_pointers[chunk_index];
@@ -62,4 +80,5 @@ void main()
     chunk_indices di = index_buf_pointers[chunk_index];
     di.indices[index_of_index] = new_index;
 
+	load_queue_count = 0;
 }

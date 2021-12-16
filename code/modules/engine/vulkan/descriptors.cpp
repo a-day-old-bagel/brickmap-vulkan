@@ -3,6 +3,8 @@
 
 #include <imgui.h>
 
+// Based on https://vkguide.dev/
+
 namespace rebel_road
 {
 
@@ -178,8 +180,8 @@ namespace rebel_road
 			{
 				std::sort( layout_key.bindings.begin(), layout_key.bindings.end(), [] ( descriptor_layout_key::combined_binding& a, descriptor_layout_key::combined_binding& b )
 					{
-						//if ( a.binding < b.binding )
-						//	return true;
+						if ( a.binding < b.binding )
+							return true;
 						if ( a.flags < b.flags )
 							return true;
 						return false;

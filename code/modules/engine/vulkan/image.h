@@ -28,8 +28,6 @@ namespace rebel_road
             void upload_pixels( const buffer<uint8_t>& staging_buffer );
             void upload_cubemap( const buffer<uint8_t>& staging_buffer, const std::vector<image_face> faces );
 
-//            void write_to_ktx( const std::string path );
-
             uint32_t width {};
             uint32_t height {};
             int mip_levels { 1 };
@@ -41,6 +39,7 @@ namespace rebel_road
             vk::Format format {};
 
             void transition_layout( vk::CommandBuffer cmd, vk::ImageLayout layout_from, vk::ImageLayout layout_to, vk::AccessFlagBits access_from, vk::AccessFlagBits access_to, vk::ImageSubresourceRange range );
+            static void transition_layout( vk::CommandBuffer cmd, vk::Image image, vk::ImageLayout layout_from, vk::ImageLayout layout_to, vk::AccessFlagBits access_from, vk::AccessFlagBits access_to, vk::ImageSubresourceRange range );
         };
 
     } // namespace vulkan
