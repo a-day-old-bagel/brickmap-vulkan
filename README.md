@@ -12,6 +12,8 @@ The Vulkan framework used here is pulled out of my personal tinkering engine pro
 * You can build rebel_engine with *DEBUG_MARKER_ENABLE* to assign and see buffer names in [NSight](https://developer.nvidia.com/nsight-visual-studio-edition).
 * I have retained the coordinate system from the original BrickMap repository. This is not Vulkan's coordinate system. I expect to change this in the future.
 * Linux doesn't build yet, but coming soon.
+* Validation layers can be enabled by changing an option in the .cfg file.
+* Tracy can be enabled by building with TRACY_ENABLE.
 
 ## Dependencies
 
