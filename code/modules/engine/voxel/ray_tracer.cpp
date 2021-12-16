@@ -48,14 +48,14 @@ namespace rebel_road
             command_buffer = device_ctx->device.allocateCommandBuffers( cmd_alloc_info )[0];
 
             auto render_pass_builder = vulkan::render_pass_builder::begin( device_ctx )
-                .add_color_attachment( device_ctx->get_swapchain_image_format(), vk::ImageLayout::eUndefined, 
+                .add_color_attachment( device_ctx->get_swapchain_image_format(), vk::ImageLayout::eUndefined,
                     vk::ImageLayout::ePresentSrcKHR, vk::AttachmentLoadOp::eClear )
                 .add_default_subpass_dependency()
                 .build();
 
             render_pass = render_pass_builder.get_render_pass();
 
-            for ( int i=0; i<2; i++ )
+            for ( int i = 0; i < 2; i++ )
             {
                 vk::Extent3D image_extent3D { render_extent.width, render_extent.height, 1 };
                 render_targets.push_back( device_ctx->create_render_target( device_ctx->get_swapchain_image_format(), vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc, image_extent3D, vk::ImageAspectFlagBits::eColor, 1 ) );
@@ -146,7 +146,7 @@ namespace rebel_road
         {
             // shader
             auto [pipe, layout] = vulkan::load_compute_shader( "rt_2_extend.comp.spv", device_ctx );
-            extend_pipeline = pipe; extend_layout = layout;            
+            extend_pipeline = pipe; extend_layout = layout;
 
             // descriptor set
             // will be created when a world is bound
@@ -193,15 +193,15 @@ namespace rebel_road
             vulkan::descriptor_builder::begin( render_ctx->get_descriptor_layout_cache(), render_ctx->get_descriptor_allocator() )
                 .bind_buffer( 0, voxel_world->get_world_buffer_info(), vk::DescriptorType::eStorageBuffer, vk::ShaderStageFlagBits::eCompute )
                 .build( world_set );
-            }
+        }
 
         void ray_tracer::update_camera( stage::camera& camera )
         {
             ZoneScopedN( "ray tracer - update camera" );
 
             camera.update();
-	        glm::vec3 camera_right = glm::normalize(glm::cross(camera.direction, camera.up)) * 1.5f * ( (float)render_extent.width / render_extent.height );
-        	glm::vec3 camera_up = glm::normalize(glm::cross(camera_right, camera.direction)) * 1.5f;
+            glm::vec3 camera_right = glm::normalize( glm::cross( camera.direction, camera.up ) ) * 1.5f * ( (float) render_extent.width / render_extent.height );
+            glm::vec3 camera_up = glm::normalize( glm::cross( camera_right, camera.direction ) ) * 1.5f;
 
             push_constants.camera_direction = glm::vec4( camera.direction, 1 );
             push_constants.camera_right = glm::vec4( camera_right, 1 );
@@ -227,7 +227,7 @@ namespace rebel_road
             render_targets[back_buffer]->transition_layout( cmd, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferSrcOptimal, {}, vk::AccessFlagBits::eTransferRead, subresource_range );
             vulkan::image::transition_layout( cmd, render_ctx->get_swapchain_image(), vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, {}, vk::AccessFlagBits::eTransferWrite, subresource_range );
 
-            vk::Extent3D render_extent_3d{ render_extent.width, render_extent.height, 1 };
+            vk::Extent3D render_extent_3d { render_extent.width, render_extent.height, 1 };
             vk::ImageCopy copy_region = vulkan::image_copy( render_extent_3d, 0, 0 );
             cmd.copyImage( render_targets[back_buffer]->vk_image, vk::ImageLayout::eTransferSrcOptimal, render_ctx->get_swapchain_image(), vk::ImageLayout::eTransferDstOptimal, 1, &copy_region );
 
@@ -249,7 +249,7 @@ namespace rebel_road
                 const int num_dispatch = ( rq_buf_size / 128 );
                 std::vector<vk::DescriptorSet> descriptor_sets;
 
-                vk::MemoryBarrier memory_barrier{}; // Barrier to ensure each compute step completes writes before the next step reads.
+                vk::MemoryBarrier memory_barrier {}; // Barrier to ensure each compute step completes writes before the next step reads.
                 memory_barrier.srcAccessMask = vk::AccessFlagBits::eShaderWrite;
                 memory_barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 
@@ -327,7 +327,7 @@ namespace rebel_road
                 {
                     //TracyVkZone( render_ctx->get_tracy_context(), cmd, "Draw" );
 
-                    vk::RenderPassBeginInfo rp_info = vulkan::renderpass_begin_info( render_pass, render_extent, framebuffers[frame%2] );
+                    vk::RenderPassBeginInfo rp_info = vulkan::renderpass_begin_info( render_pass, render_extent, framebuffers[frame % 2] );
                     vk::ClearValue clear_value { {std::array<float, 4>( { 0.5f, 0.3f, 0.8f, 1.0f } )} };
                     rp_info.pClearValues = &clear_value;
                     rp_info.clearValueCount = 1;
@@ -384,7 +384,7 @@ namespace rebel_road
             submit_info.pSignalSemaphores = &signal_semaphore;
 
             VK_CHECK( render_ctx->get_graphics_queue().submit( 1, &submit_info, nullptr ) );
-            
+
             frame++;
             primary_rays_index = ( primary_rays_index + 1 ) % 2;
         }
