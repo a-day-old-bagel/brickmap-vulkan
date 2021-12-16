@@ -1,6 +1,8 @@
 # brickmap-vulkan
 A realtime Vulkan voxel path tracer.
 
+This is a work in progress!
+
 This system is a Vulkan/SPIRV implementation of the [BrickMap](https://github.com/stijnherfst/BrickMap) by [stijnherfst](https://github.com/stijnherfst) which is in turn based on [this paper](https://dspace.library.uu.nl/handle/1874/315917) by Wingerden. After taking apart several voxel systems as learning exercises, I found that BrickMap was a great starting point for building my own systems and wanted to provide a version of that code implemented in Vulkan and GLSL.
 
 The Vulkan framework used here is pulled out of my personal tinkering engine project and is based on various tutorials and learning. https://vkguide.dev/ has been particularly helpful in learning Vulkan. This project uses vulkan.hpp.
