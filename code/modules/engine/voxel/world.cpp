@@ -94,7 +94,7 @@ namespace rebel_road
             auto chunk = std::make_unique<voxel::chunk>();
             chunk->indices.resize( chunk_size * chunk_size * chunk_size, 0 );
 
-            uint64_t filled_count{};
+            uint64_t filled_count {};
 
             for ( int z = 0; z < chunk_size; z++ )
             {
@@ -185,54 +185,54 @@ namespace rebel_road
 
             // For each chunk, create two buffers. One to contain all indexes for the gpu and one to contain all bricks that are currently loaded on the gpu.
 
-                worker->immediate_submit( [&] ( vk::CommandBuffer cmd )
-                    {
-
-            for ( int i = 0; i < chunklist.size(); i++ )
-            {
-                spdlog::info( "Upload chunk {}", i );
-                auto& chunk = chunklist[i];
-
-                filled_voxels += filled_voxel_counts[i];
-
-                // Optimize me: this is very slow.
-                for ( int j = 0; j < chunk->indices.size(); j++ )
+            worker->immediate_submit( [&] ( vk::CommandBuffer cmd )
                 {
-                    if ( chunk->indices[j] & brick_loaded_bit )
+
+                    for ( int i = 0; i < chunklist.size(); i++ )
                     {
-                        // For each brick that has been created, mark it as unloaded (on the gpu) and save the lod bits.
-                        temp_indices[j] = brick_unloaded_bit | ( chunk->indices[j] & brick_lod_bits );
-                    }
-                    else
-                    {
-                        temp_indices[j] = 0;
-                    }
-                }
+                        spdlog::info( "Upload chunk {}", i );
+                        auto& chunk = chunklist[i];
 
-                // Upload the chunk's brick indices to the GPU and note the device address of the index buffer.
+                        filled_voxels += filled_voxel_counts[i];
 
-                vulkan::buffer<uint32_t> index_staging;
-                index_staging.allocate( chunk->indices.size() * sizeof( uint32_t ), vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_CPU_ONLY );
-                index_staging.upload_to_buffer( temp_indices.data(), temp_indices.size() * sizeof( uint32_t ) );
+                        // Optimize me: this is very slow.
+                        for ( int j = 0; j < chunk->indices.size(); j++ )
+                        {
+                            if ( chunk->indices[j] & brick_loaded_bit )
+                            {
+                                // For each brick that has been created, mark it as unloaded (on the gpu) and save the lod bits.
+                                temp_indices[j] = brick_unloaded_bit | ( chunk->indices[j] & brick_lod_bits );
+                            }
+                            else
+                            {
+                                temp_indices[j] = 0;
+                            }
+                        }
 
-                chunk->gpu_indices.allocate( chunk->indices.size() * sizeof( uint32_t ), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer, VMA_MEMORY_USAGE_GPU_ONLY );
-                chunk->gpu_index_address = vulkan::get_buffer_device_address( chunk->gpu_indices.buf );
-                world_index_ptrs.index_buf_pointers[i] = chunk->gpu_index_address;
+                        // Upload the chunk's brick indices to the GPU and note the device address of the index buffer.
+
+                        vulkan::buffer<uint32_t> index_staging;
+                        index_staging.allocate( chunk->indices.size() * sizeof( uint32_t ), vk::BufferUsageFlagBits::eTransferSrc, VMA_MEMORY_USAGE_CPU_ONLY );
+                        index_staging.upload_to_buffer( temp_indices.data(), temp_indices.size() * sizeof( uint32_t ) );
+
+                        chunk->gpu_indices.allocate( chunk->indices.size() * sizeof( uint32_t ), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer, VMA_MEMORY_USAGE_GPU_ONLY );
+                        chunk->gpu_index_address = vulkan::get_buffer_device_address( chunk->gpu_indices.buf );
+                        world_index_ptrs.index_buf_pointers[i] = chunk->gpu_index_address;
 
                         vk::BufferCopy copy {};
                         copy.size = index_staging.size;
                         cmd.copyBuffer( index_staging.buf, chunk->gpu_indices.buf, 1, &copy );
 
-                brick_loader_deletion_queue.push_function( [index_staging] () mutable { index_staging.free(); } );
+                        brick_loader_deletion_queue.push_function( [index_staging] () mutable { index_staging.free(); } );
 
-                // Each time the capacity of gpu_bricks would be exceeded, we will reallocate it at double size in process_load_queue.
-                // We don't start with any bricks loaded on the GPU. When rays hit an unloaded brick they will request a load.
+                        // Each time the capacity of gpu_bricks would be exceeded, we will reallocate it at double size in process_load_queue.
+                        // We don't start with any bricks loaded on the GPU. When rays hit an unloaded brick they will request a load.
 
-                chunk->gpu_bricks.allocate( chunk_brick_buffer_starting_size * sizeof( brick ), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer, VMA_MEMORY_USAGE_GPU_ONLY );
-                chunk->gpu_brick_address = vulkan::get_buffer_device_address( chunk->gpu_bricks.buf );
-                world_brick_ptrs.brick_buf_pointers[i] = chunk->gpu_brick_address;
-            }
-                    } );
+                        chunk->gpu_bricks.allocate( chunk_brick_buffer_starting_size * sizeof( brick ), vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eShaderDeviceAddress | vk::BufferUsageFlagBits::eStorageBuffer, VMA_MEMORY_USAGE_GPU_ONLY );
+                        chunk->gpu_brick_address = vulkan::get_buffer_device_address( chunk->gpu_bricks.buf );
+                        world_brick_ptrs.brick_buf_pointers[i] = chunk->gpu_brick_address;
+                    }
+                } );
 
             worker->immediate_submit( [&] ( vk::CommandBuffer cmd )
                 {
