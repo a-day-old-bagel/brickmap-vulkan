@@ -9,6 +9,10 @@ endif()
 
 set(GLSL_VALIDATOR "$ENV{VULKAN_SDK}/Bin/glslangValidator.exe")
 
+file(GLOB_RECURSE GLSL_INCLUDE_FILES
+    "${SHADER_SOURCE_DIR}/*.glsl"  
+)
+
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${SHADER_SOURCE_DIR}/*.frag"  
     "${SHADER_SOURCE_DIR}/*.geom"
@@ -27,7 +31,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
   add_custom_command(
     OUTPUT ${SPIRV}
     COMMAND ${GLSL_VALIDATOR} --target-env vulkan1.2 -V ${GLSL} -o ${SPIRV} -g 
-    DEPENDS ${GLSL})
+    DEPENDS ${GLSL} ${GLSL_INCLUDE_FILES})
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
 
