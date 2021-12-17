@@ -53,8 +53,8 @@ namespace rebel_road
 
             vulkan::device_context::create_info dci
             {
-                .app_name = settings.app_name,
-                .use_validation_layers = settings.use_validation_layers,
+                .app_name = app_name,
+                .use_validation_layers = use_validation_layers,
                 .window = window,
                 .required_features = required_features,
                 .required_features_12 = required_features_12,
@@ -76,7 +76,7 @@ namespace rebel_road
         app_state brickmap_vulkan_app::on_init()
         {
             // GLFW & Vulkan Context
-            init( "cfg/settings.json" );
+            init( "Brickmap Vulkan", 1920, 1080, false );
             glfwSetWindowUserPointer( window, this );
             glfwSetKeyCallback( window, key_callback );
 

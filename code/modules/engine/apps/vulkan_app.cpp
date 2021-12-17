@@ -6,10 +6,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <nlohmann/json.hpp>
-
-using namespace nlohmann;
-
 namespace rebel_road
 {
     namespace apps
@@ -20,17 +16,6 @@ namespace rebel_road
 
         }
 
-        void vulkan_app_settings::load_from_file( const std::string& settings_file )
-        {
-            std::ifstream ifs( settings_file );
-            assert( ifs.is_open() );
-            json settings = json::parse( ifs );
-
-            app_name = settings["settings"]["app_name"];
-            default_width = settings["settings"]["width"];
-            default_height = settings["settings"]["height"];
-            use_validation_layers = settings["settings"]["use_validation_layers"];
-        }
 
         void vulkan_app::shutdown()
         {
@@ -38,10 +23,12 @@ namespace rebel_road
             deletion_queue.flush();
         }
 
-        void vulkan_app::init( const std::string& settings_file )
+        void vulkan_app::init( std::string in_app_name, uint32_t width, uint32_t height, bool in_use_validation_layers )
         {
-            settings.load_from_file( settings_file );
-            window_extent = vk::Extent2D( settings.default_width, settings.default_height );
+            app_name = in_app_name;
+            use_validation_layers = in_use_validation_layers;
+
+            window_extent = vk::Extent2D( width, height );
 
             init_logging();
             create_window();
@@ -62,7 +49,7 @@ namespace rebel_road
             glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );     // Tell glfw to not create an opengl context, since we are using vulkan.
             glfwWindowHint( GLFW_RESIZABLE, GLFW_FALSE );
 
-            window = glfwCreateWindow( settings.default_width, settings.default_height, settings.app_name.c_str(), nullptr, nullptr );
+            window = glfwCreateWindow( window_extent.width, window_extent.height, app_name.c_str(), nullptr, nullptr );
             glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
             if ( glfwRawMouseMotionSupported() )
                 glfwSetInputMode( window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE );

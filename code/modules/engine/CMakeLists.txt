@@ -25,7 +25,6 @@ target_link_libraries( rebel_engine PUBLIC
     spirv_reflect
     tracy
     spdlog
-    json
     simplex-noise )
 
 #if ( MODULE_TESTS )

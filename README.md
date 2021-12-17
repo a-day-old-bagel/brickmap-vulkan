@@ -25,7 +25,6 @@ These dependencies will be downloaded during the first run of cmake:
 * [glfw](https://github.com/glfw/glfw.git)
 * [glm](https://github.com/g-truc/glm.git)
 * [imgui](https://github.com/ocornut/imgui.git)
-* [json](https://github.com/nlohmann/json.git)
 * [spdlog](https://github.com/gabime/spdlog.git)
 * [tracy](https://github.com/wolfpld/tracy.git)
 * [simplex-noise](https://github.com/SRombauts/SimplexNoise.git)

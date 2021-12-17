@@ -9,17 +9,6 @@ namespace rebel_road
     namespace apps
     {
 
-        class vulkan_app_settings
-        {
-        public:
-            void load_from_file( const std::string& settings_file );
-
-            std::string app_name;
-            uint32_t default_width {};
-            uint32_t default_height {};
-            bool use_validation_layers {};
-        };
-
         class vulkan_app : public app
         {
         public:
@@ -30,7 +19,7 @@ namespace rebel_road
             vulkan_app( app&& ) = delete;
 
         protected:
-            void init( const std::string& settings_file );
+            void init( std::string in_app_name, uint32_t width, uint32_t height, bool in_use_validation_layers );
             void init_logging();
             void create_window();
             void init_vulkan();
@@ -40,8 +29,6 @@ namespace rebel_road
 
             virtual vulkan::device_context::create_info get_device_create_info() = 0;
 
-            vulkan_app_settings settings;
-
             util::deletion_queue deletion_queue;
 
             GLFWwindow* window { nullptr };
@@ -50,6 +37,8 @@ namespace rebel_road
             std::shared_ptr<vulkan::render_context> render_ctx;
 
             vk::Extent2D window_extent;
+            std::string app_name;
+            bool use_validation_layers{ false };
 
             bool mouse_visible { false };
         };

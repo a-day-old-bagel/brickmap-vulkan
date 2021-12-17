@@ -86,25 +86,6 @@ if ( NOT imgui_POPULATED )
 endif()
 
 #
-# nlohmann/json
-#
-
-message( "  [json]" )
-
-FetchContent_Declare(
-  json
-  GIT_REPOSITORY "https://github.com/nlohmann/json.git"
-  GIT_TAG "v3.10.4"
-)
-
-FetchContent_GetProperties( json )
-if( NOT json_POPULATED )
-  FetchContent_Populate( json )
-  add_library( json INTERFACE )
-  target_include_directories( json SYSTEM INTERFACE "${json_SOURCE_DIR}/include" )
-endif()
-
-#
 # simplex-noise
 #
 
