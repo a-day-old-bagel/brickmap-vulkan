@@ -55,20 +55,7 @@ namespace rebel_road
 
             render_pass = render_pass_builder.get_render_pass();
 
-            for ( int i = 0; i < 2; i++ )
-            {
-                vk::Extent3D image_extent3D { render_extent.width, render_extent.height, 1 };
-                render_targets.push_back( device_ctx->create_render_target( device_ctx->get_swapchain_image_format(), vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc, image_extent3D, vk::ImageAspectFlagBits::eColor, 1 ) );
-                worker->immediate_submit( [&] ( vk::CommandBuffer cmd )
-                    {
-                        vk::ImageSubresourceRange range = vulkan::image_subresource_range( 0, 1 );
-                        render_targets[i]->transition_layout( cmd, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits::eColorAttachmentWrite, range );
-                    }
-                );
-
-                std::vector<vk::ImageView> attachments { render_targets[i]->default_view };
-                framebuffers.push_back( device_ctx->create_framebuffer( render_pass, attachments, render_extent ) );
-            }
+            init_framebuffers();
 
             vulkan::shader_module* ray_tracer_vert = device_ctx->create_shader_module( "ray_tracer_visualizer.vert.spv" );
             vulkan::shader_module* ray_tracer_frag = device_ctx->create_shader_module( "ray_tracer_visualizer.frag.spv" );
@@ -93,6 +80,32 @@ namespace rebel_road
                 .build( render_pass );
 
             render_pipeline = pipeline_builder.get_pipeline();
+        }
+
+        void ray_tracer::init_framebuffers()
+        {
+            render_targets.clear();
+            framebuffers.clear();
+            for ( int i = 0; i < 2; i++ )
+            {
+                vk::Extent3D image_extent3D { render_extent.width, render_extent.height, 1 };
+                render_targets.push_back( device_ctx->create_render_target( device_ctx->get_swapchain_image_format(), vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc, image_extent3D, vk::ImageAspectFlagBits::eColor, 1, true ) );
+                worker->immediate_submit( [&] ( vk::CommandBuffer cmd )
+                    {
+                        vk::ImageSubresourceRange range = vulkan::image_subresource_range( 0, 1 );
+                        render_targets[i]->transition_layout( cmd, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal, {}, vk::AccessFlagBits::eColorAttachmentWrite, range );
+                    }
+                );
+
+                std::vector<vk::ImageView> attachments { render_targets[i]->default_view };
+                framebuffers.push_back( device_ctx->create_framebuffer( render_pass, attachments, render_extent, "", true ) );
+            }
+        }
+
+        void ray_tracer::resize( int width, int height )
+        {
+            render_extent = vk::Extent2D( width, height );
+            init_framebuffers();
         }
 
         void ray_tracer::init_primary_rays()

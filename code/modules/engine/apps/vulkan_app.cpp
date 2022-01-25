@@ -16,6 +16,11 @@ namespace rebel_road
 
         }
 
+        void glfw_window_size_callback( GLFWwindow* window, int width, int height )
+        {
+            auto app = static_cast<vulkan_app*>( glfwGetWindowUserPointer( window ) );
+            app->internal_resize_window( width, height );
+        }
 
         void vulkan_app::shutdown()
         {
@@ -47,7 +52,7 @@ namespace rebel_road
             glfwInit();
             glfwSetErrorCallback( glfw_error_callback );
             glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );     // Tell glfw to not create an opengl context, since we are using vulkan.
-            glfwWindowHint( GLFW_RESIZABLE, GLFW_FALSE );
+            glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
 
             window = glfwCreateWindow( window_extent.width, window_extent.height, app_name.c_str(), nullptr, nullptr );
             glfwSetInputMode( window, GLFW_CURSOR, GLFW_CURSOR_DISABLED );
@@ -55,6 +60,8 @@ namespace rebel_road
                 glfwSetInputMode( window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE );
             else
                 spdlog::critical( "Platform does not support raw mouse input." );
+            glfwSetWindowSizeCallback( window, glfw_window_size_callback );
+            glfwSetWindowUserPointer( window, this );
 
             deletion_queue.push_function( [=,this] ()
                 {
@@ -68,6 +75,14 @@ namespace rebel_road
             auto dci = get_device_create_info();
             device_ctx = vulkan::device_context::create( dci );
             deletion_queue.push_function( [=,this] () { device_ctx->shutdown(); } );
+        }
+
+        void vulkan_app::internal_resize_window( int width, int height )
+        {           
+            window_extent = vk::Extent2D( width, height );
+
+            device_ctx->resize( width, height );
+            resize( width, height );
         }
 
         void vulkan_app::toggle_mouse_visible()

@@ -80,6 +80,8 @@ namespace rebel_road
 
             void shutdown();
 
+            void resize( int width, int height );
+
             void bind_world( std::shared_ptr<world> in_world );
             void update_camera( stage::camera& camera );
 
@@ -92,6 +94,7 @@ namespace rebel_road
 
         private:
             void init();
+            void init_framebuffers();
             void init_primary_rays();
             void init_global_state();
             void init_extend();

@@ -35,6 +35,8 @@ namespace rebel_road
             virtual app_state on_running();
             virtual app_state on_cleanup();
 
+            virtual void resize( int width, int height );
+
             void generate_world();
 
             stage::camera camera;

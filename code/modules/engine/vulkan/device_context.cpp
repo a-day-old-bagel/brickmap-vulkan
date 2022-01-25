@@ -70,6 +70,17 @@ namespace rebel_road
         {
             device.waitIdle();
 
+            std::vector<VkImageView> image_views;
+            for ( auto iv: swapchain_image_views )
+            {
+                image_views.push_back( iv );
+            }
+            vkb_swapchain.destroy_image_views( image_views );
+            vkb::destroy_swapchain( vkb_swapchain );
+            swapchain_images.clear();
+            swapchain_image_views.clear();
+
+            resize_deletion_queue.flush();
             deletion_queue.flush();
         }
 
@@ -177,30 +188,30 @@ namespace rebel_road
                 spdlog::critical( "Failed to build swapchain: {}", vkb_swapchain_result.error().message() );
             }
 
+            std::vector<VkImageView> image_views;
+            for ( auto iv: swapchain_image_views )
+            {
+                image_views.push_back( iv );
+            }
+            vkb_swapchain.destroy_image_views( image_views );
+
             vkb::destroy_swapchain( vkb_swapchain );
             vkb_swapchain = vkb_swapchain_result.value();
             swapchain = vkb_swapchain.swapchain;
 
+            swapchain_images.clear();
             auto images = vkb_swapchain.get_images().value();
             for ( auto image : images )
             {
                 swapchain_images.push_back( image );
             }
 
-            auto image_views = vkb_swapchain.get_image_views().value();
+            swapchain_image_views.clear();
+            image_views = vkb_swapchain.get_image_views().value();
             for ( auto image_view : image_views )
             {
                 swapchain_image_views.push_back( image_view );
             }
-
-            deletion_queue.push_function( [=] ()
-                {
-                    vkb_swapchain.destroy_image_views( image_views );
-                    vkb::destroy_swapchain( vkb_swapchain );
-
-                    swapchain_images.clear();
-                    swapchain_image_views.clear();
-                } );
         }
 
         uint32_t device_context::get_swapchain_image_count()
@@ -218,6 +229,14 @@ namespace rebel_road
             return vk::Format { vkb_swapchain.image_format };
         }
 
+        void device_context::resize( int width, int height )
+        {
+            vkDeviceWaitIdle( device );
+
+            resize_deletion_queue.flush();
+            init_swapchain();
+        }
+
         void device_context::init_queues()
         {
             compute_queue = vkb_device.get_queue( vkb::QueueType::compute ).value();
@@ -233,7 +252,7 @@ namespace rebel_road
             return render_context::create( this );
         }
 
-        std::shared_ptr<image> device_context::create_render_target( vk::Format image_format, vk::ImageUsageFlags image_usage, vk::Extent3D image_extent, vk::ImageAspectFlagBits image_aspect, uint32_t mip_levels  )
+        std::shared_ptr<image> device_context::create_render_target( vk::Format image_format, vk::ImageUsageFlags image_usage, vk::Extent3D image_extent, vk::ImageAspectFlagBits image_aspect, uint32_t mip_levels, bool swap_chain_lifetime )
         {
             auto new_image = std::make_shared<image>();
 
@@ -244,11 +263,11 @@ namespace rebel_road
             };
 
             vk::ImageCreateInfo image_info = image_create_info( image_format, image_usage, image_extent, mip_levels );
-            auto [img, alloc] = create_image( image_info, alloc_info );
+            auto [img, alloc] = create_image( image_info, alloc_info, swap_chain_lifetime );
             new_image->vk_image = img; new_image->vk_allocation = alloc;
 
             vk::ImageViewCreateInfo image_view_info = image_view_create_info( image_format, new_image->vk_image, image_aspect, mip_levels );
-            new_image->default_view = create_image_view( image_view_info );
+            new_image->default_view = create_image_view( image_view_info, swap_chain_lifetime );
             new_image->format = image_format;
 
             return new_image;
@@ -273,7 +292,7 @@ namespace rebel_road
             }
         }
 
-        vk::Framebuffer device_context::create_framebuffer( vk::RenderPass render_pass, const std::vector<vk::ImageView>& attachments, vk::Extent2D extent, const std::string& key )
+        vk::Framebuffer device_context::create_framebuffer( vk::RenderPass render_pass, const std::vector<vk::ImageView>& attachments, vk::Extent2D extent, const std::string& key, bool swap_chain_lifetime )
         {
             auto fb_info = vulkan::framebuffer_create_info( render_pass, extent );
             fb_info.pAttachments = attachments.data();
@@ -289,7 +308,10 @@ namespace rebel_road
             }
 
             auto framebuffer = device.createFramebuffer( fb_info );
-            deletion_queue.push_function( [=] () { device.destroyFramebuffer( framebuffer ); } );
+            if ( swap_chain_lifetime )
+                resize_deletion_queue.push_function( [=] () { device.destroyFramebuffer( framebuffer ); } );
+            else
+                deletion_queue.push_function( [=] () { device.destroyFramebuffer( framebuffer ); } );
 
             if ( !key.empty() )
             {
@@ -424,19 +446,25 @@ namespace rebel_road
             return pipeline;
         }
 
-        vk::ImageView device_context::create_image_view( const vk::ImageViewCreateInfo& create_info )
+        vk::ImageView device_context::create_image_view( const vk::ImageViewCreateInfo& create_info, bool swap_chain_lifetime )
         {
             auto image_view = device.createImageView( create_info );
-            deletion_queue.push_function( [=,this] () { device.destroyImageView( image_view ); } );
+            if ( swap_chain_lifetime )
+                resize_deletion_queue.push_function( [=,this] () { device.destroyImageView( image_view ); } );
+            else
+                deletion_queue.push_function( [=,this] () { device.destroyImageView( image_view ); } );
             return image_view;
         }
 
-        std::pair<vk::Image, VmaAllocation> device_context::create_image( const vk::ImageCreateInfo& create_info, const VmaAllocationCreateInfo& alloc_info )
+        std::pair<vk::Image, VmaAllocation> device_context::create_image( const vk::ImageCreateInfo& create_info, const VmaAllocationCreateInfo& alloc_info, bool swap_chain_lifetime )
         {
             vk::Image vk_image;
             VmaAllocation vk_allocation;
             vmaCreateImage( allocator, &create_info, &alloc_info, &vk_image, &vk_allocation, nullptr );
-            deletion_queue.push_function( [=,this] () { vmaDestroyImage( allocator, vk_image, vk_allocation ); } );
+            if ( swap_chain_lifetime )
+                resize_deletion_queue.push_function( [=,this] () { vmaDestroyImage( allocator, vk_image, vk_allocation ); } );
+            else
+                deletion_queue.push_function( [=,this] () { vmaDestroyImage( allocator, vk_image, vk_allocation ); } );
             return std::make_pair( vk_image, vk_allocation );
         }
 

@@ -45,14 +45,16 @@ namespace rebel_road
 
             void render_stats();
 
+            void resize( int width, int height );
+
             uint32_t get_swapchain_image_count();
             vk::ImageView get_swapchain_image_view( int idx );
             vk::Format get_swapchain_image_format();
 
             std::shared_ptr<render_context> create_render_context();
-            std::shared_ptr<image> create_render_target( vk::Format image_format, vk::ImageUsageFlags image_usage, vk::Extent3D image_extent, vk::ImageAspectFlagBits image_aspect, uint32_t mip_levels = 1 );
+            std::shared_ptr<image> create_render_target( vk::Format image_format, vk::ImageUsageFlags image_usage, vk::Extent3D image_extent, vk::ImageAspectFlagBits image_aspect, uint32_t mip_levels = 1, bool swap_chain_lifetime = false );
             vk::RenderPass create_render_pass( vk::RenderPassCreateInfo render_pass_info );
-            vk::Framebuffer create_framebuffer( vk::RenderPass render_pass, const std::vector<vk::ImageView>& attachments, vk::Extent2D extent, const std::string& cache_key = "" );
+            vk::Framebuffer create_framebuffer( vk::RenderPass render_pass, const std::vector<vk::ImageView>& attachments, vk::Extent2D extent, const std::string& cache_key = "", bool swap_chain_lifetime = false );
             shader_module* create_shader_module( const std::string& name );
             vk::DescriptorSetLayout create_descriptor_set_layout( const vk::DescriptorSetLayoutCreateInfo& create_info );
             vk::PipelineLayout create_pipeline_layout( const vk::PipelineLayoutCreateInfo& create_info, const std::string& key = "" );
@@ -60,8 +62,8 @@ namespace rebel_road
             vk::Pipeline create_graphics_pipeline( const vk::GraphicsPipelineCreateInfo& create_info, const std::string& key = "" );
             vk::Pipeline find_graphics_pipeline( const std::string& key );
             vk::Pipeline create_compute_pipeline( const vk::ComputePipelineCreateInfo& create_info );
-            vk::ImageView create_image_view( const vk::ImageViewCreateInfo& create_info );
-            std::pair<vk::Image, VmaAllocation> create_image( const vk::ImageCreateInfo& create_info, const VmaAllocationCreateInfo& alloc_info );
+            vk::ImageView create_image_view( const vk::ImageViewCreateInfo& create_info, bool swap_chain_lifetime = false );
+            std::pair<vk::Image, VmaAllocation> create_image( const vk::ImageCreateInfo& create_info, const VmaAllocationCreateInfo& alloc_info, bool swap_chain_lifetime = false );
             vk::Sampler create_sampler( const vk::SamplerCreateInfo& create_info );
             std::vector<vk::Framebuffer> create_swap_chain_framebuffers( vk::RenderPass render_pass, vk::Extent2D render_extent, std::vector<vk::ImageView> attachments = {} );
             vk::Semaphore create_semaphore( const vk::SemaphoreCreateInfo create_info );
@@ -101,6 +103,7 @@ namespace rebel_road
             std::unordered_map<std::string, vk::Pipeline> pipeline_cache; // Could later be changed to be keyed by create info.
 
         private:
+            util::deletion_queue resize_deletion_queue;
             util::deletion_queue deletion_queue;
         };
 

@@ -73,10 +73,17 @@ namespace rebel_road
             ray_tracer->bind_world( voxel_world );
         }
 
+        void brickmap_vulkan_app::resize( int width, int height )
+        {
+            framebuffers = device_ctx->create_swap_chain_framebuffers( render_pass, window_extent );
+            
+            ray_tracer->resize( width, height );
+        }
+
         app_state brickmap_vulkan_app::on_init()
         {
             // GLFW & Vulkan Context
-            init( "Brickmap Vulkan", 1920, 1080, false );
+            init( "Brickmap Vulkan", 1920, 1080, true );
             glfwSetWindowUserPointer( window, this );
             glfwSetKeyCallback( window, key_callback );
 

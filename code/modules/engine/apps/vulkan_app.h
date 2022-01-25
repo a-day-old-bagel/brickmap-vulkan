@@ -18,6 +18,9 @@ namespace rebel_road
             vulkan_app( const app& ) = delete;
             vulkan_app( app&& ) = delete;
 
+            virtual void resize( int width, int height ) = 0;
+            void internal_resize_window( int width, int height );
+
         protected:
             void init( std::string in_app_name, uint32_t width, uint32_t height, bool in_use_validation_layers );
             void init_logging();
