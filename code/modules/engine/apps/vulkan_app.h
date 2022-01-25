@@ -40,6 +40,7 @@ namespace rebel_road
             std::shared_ptr<vulkan::render_context> render_ctx;
 
             vk::Extent2D window_extent;
+            vk::Extent2D render_extent;
             std::string app_name;
             bool use_validation_layers{ false };
 

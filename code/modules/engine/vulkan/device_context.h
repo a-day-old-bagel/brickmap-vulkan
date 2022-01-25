@@ -51,6 +51,8 @@ namespace rebel_road
             vk::ImageView get_swapchain_image_view( int idx );
             vk::Format get_swapchain_image_format();
 
+            vk::Extent2D find_render_extent( uint32_t desired_width, uint32_t desired_height );
+
             std::shared_ptr<render_context> create_render_context();
             std::shared_ptr<image> create_render_target( vk::Format image_format, vk::ImageUsageFlags image_usage, vk::Extent3D image_extent, vk::ImageAspectFlagBits image_aspect, uint32_t mip_levels = 1, bool swap_chain_lifetime = false );
             vk::RenderPass create_render_pass( vk::RenderPassCreateInfo render_pass_info );

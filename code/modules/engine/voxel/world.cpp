@@ -190,7 +190,7 @@ namespace rebel_road
 
                     for ( int i = 0; i < chunklist.size(); i++ )
                     {
-                        spdlog::info( "Upload chunk {}", i );
+                        //spdlog::info( "Upload chunk {}", i );
                         auto& chunk = chunklist[i];
 
                         filled_voxels += filled_voxel_counts[i];

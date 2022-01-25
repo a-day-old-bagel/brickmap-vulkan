@@ -84,6 +84,31 @@ namespace rebel_road
             deletion_queue.flush();
         }
 
+        vk::Extent2D find_extent( vk::SurfaceCapabilitiesKHR const& capabilities, uint32_t desired_width, uint32_t desired_height )
+        {
+            if ( capabilities.currentExtent.width != UINT32_MAX )
+            {
+                return capabilities.currentExtent;
+            }
+            else
+            {
+                vk::Extent2D actualExtent = { desired_width, desired_height };
+
+                actualExtent.width = std::max( capabilities.minImageExtent.width,
+                    std::min( capabilities.maxImageExtent.width, actualExtent.width ) );
+                actualExtent.height = std::max( capabilities.minImageExtent.height,
+                    std::min( capabilities.maxImageExtent.height, actualExtent.height ) );
+
+                return actualExtent;
+            }
+        }
+
+        vk::Extent2D device_context::find_render_extent( uint32_t desired_width, uint32_t desired_height )
+        {
+            auto caps = defaultGPU.getSurfaceCapabilitiesKHR( surface );
+	        return find_extent( caps, desired_width, desired_height );
+        }
+
         void device_context::init_device( const device_context::create_info& ci )
         {
             vk::DynamicLoader dl;

@@ -75,13 +75,16 @@ namespace rebel_road
             auto dci = get_device_create_info();
             device_ctx = vulkan::device_context::create( dci );
             deletion_queue.push_function( [=,this] () { device_ctx->shutdown(); } );
+
+            render_extent = device_ctx->find_render_extent( window_extent.width, window_extent.height );
         }
 
         void vulkan_app::internal_resize_window( int width, int height )
         {           
             window_extent = vk::Extent2D( width, height );
-
             device_ctx->resize( width, height );
+            render_extent = device_ctx->find_render_extent( window_extent.width, window_extent.height );
+
             resize( width, height );
         }
 

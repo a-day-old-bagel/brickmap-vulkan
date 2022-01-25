@@ -75,7 +75,7 @@ namespace rebel_road
 
         void brickmap_vulkan_app::resize( int width, int height )
         {
-            framebuffers = device_ctx->create_swap_chain_framebuffers( render_pass, window_extent );
+            framebuffers = device_ctx->create_swap_chain_framebuffers( render_pass, render_extent );
             
             ray_tracer->resize( width, height );
         }
@@ -83,7 +83,8 @@ namespace rebel_road
         app_state brickmap_vulkan_app::on_init()
         {
             // GLFW & Vulkan Context
-            init( "Brickmap Vulkan", 1920, 1080, true );
+//            init( "Brickmap Vulkan", 1920, 1080, true );
+            init( "Brickmap Vulkan", 4000, 2000, true );
             glfwSetWindowUserPointer( window, this );
             glfwSetKeyCallback( window, key_callback );
 
@@ -98,10 +99,10 @@ namespace rebel_road
             render_pass = render_pass_builder.get_render_pass();
 
             // Swap Chain Framebuffers
-            framebuffers = device_ctx->create_swap_chain_framebuffers( render_pass, window_extent );
+            framebuffers = device_ctx->create_swap_chain_framebuffers( render_pass, render_extent );
 
             // Ray Tracer
-            ray_tracer = voxel::ray_tracer::create( render_ctx.get(), window_extent );
+            ray_tracer = voxel::ray_tracer::create( render_ctx.get(), render_extent );
 
             // Voxel World
             generate_world();
@@ -148,7 +149,7 @@ namespace rebel_road
                 //TracyVkZone( render_ctx->get_tracy_context(), cmd, "Frame" );
                 ray_tracer->draw( cmd );
 
-                vk::RenderPassBeginInfo rp_info = vulkan::renderpass_begin_info( render_pass, window_extent, framebuffers[render_ctx->get_swapchain_image_index()] );
+                vk::RenderPassBeginInfo rp_info = vulkan::renderpass_begin_info( render_pass, render_extent, framebuffers[render_ctx->get_swapchain_image_index()] );
                 cmd.beginRenderPass( &rp_info, vk::SubpassContents::eInline );
                 {
                     imgui_ctx->draw( cmd );
