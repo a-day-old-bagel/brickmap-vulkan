@@ -38,6 +38,8 @@
 *.spv
 
 .vscode/
+.idea/
 build/
 out/
+cmake-build*/
 
